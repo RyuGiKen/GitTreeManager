@@ -1,0 +1,733 @@
+namespace GitTreeManager
+{
+    partial class MainForm
+    {
+        private System.ComponentModel.IContainer components = null;
+
+        protected override void Dispose(bool disposing)
+        {
+            if (disposing && (components != null))
+            {
+                components.Dispose();
+            }
+            base.Dispose(disposing);
+        }
+
+        #region Windows Form Designer generated code
+
+        private void InitializeComponent()
+        {
+            this.grpRepo = new System.Windows.Forms.GroupBox();
+            this.lblRepoPath = new System.Windows.Forms.Label();
+            this.txtRepoPath = new System.Windows.Forms.TextBox();
+            this.btnBrowseRepo = new System.Windows.Forms.Button();
+            this.rbNew = new System.Windows.Forms.RadioButton();
+            this.rbClone = new System.Windows.Forms.RadioButton();
+            this.lblRemoteUrl = new System.Windows.Forms.Label();
+            this.txtRemoteUrl = new System.Windows.Forms.TextBox();
+            this.lblDefaultBranch = new System.Windows.Forms.Label();
+            this.txtDefaultBranch = new System.Windows.Forms.TextBox();
+            this.tabs = new System.Windows.Forms.TabControl();
+            this.tabWorktrees = new System.Windows.Forms.TabPage();
+            this.pnlWtToolbar = new System.Windows.Forms.Panel();
+            this.btnWtAdd = new System.Windows.Forms.Button();
+            this.btnWtRemove = new System.Windows.Forms.Button();
+            this.btnWtUp = new System.Windows.Forms.Button();
+            this.btnWtDown = new System.Windows.Forms.Button();
+            this.btnWtRead = new System.Windows.Forms.Button();
+            this.btnWtClear = new System.Windows.Forms.Button();
+            this.lblWtCount = new System.Windows.Forms.Label();
+            this.dgvWorktrees = new System.Windows.Forms.DataGridView();
+            this.colNum = new System.Windows.Forms.DataGridViewTextBoxColumn();
+            this.colPath = new System.Windows.Forms.DataGridViewTextBoxColumn();
+            this.colBranch = new System.Windows.Forms.DataGridViewTextBoxColumn();
+            this.colName = new System.Windows.Forms.DataGridViewTextBoxColumn();
+            this.colEmail = new System.Windows.Forms.DataGridViewTextBoxColumn();
+            this.pnlWtBottom = new System.Windows.Forms.Panel();
+            this.chkDryRun = new System.Windows.Forms.CheckBox();
+            this.btnPreview = new System.Windows.Forms.Button();
+            this.btnExecute = new System.Windows.Forms.Button();
+            this.tabLog = new System.Windows.Forms.TabPage();
+            this.pnlLogToolbar = new System.Windows.Forms.Panel();
+            this.btnLogCopy = new System.Windows.Forms.Button();
+            this.btnLogClear = new System.Windows.Forms.Button();
+            this.btnLogSaveBat = new System.Windows.Forms.Button();
+            this.btnLogSavePs1 = new System.Windows.Forms.Button();
+            this.txtLog = new System.Windows.Forms.RichTextBox();
+            this.grpCommon = new System.Windows.Forms.GroupBox();
+            this.btnCleanOrphan = new System.Windows.Forms.Button();
+            this.btnCleanMerged = new System.Windows.Forms.Button();
+            this.btnUpdateRemote = new System.Windows.Forms.Button();
+            this.btnDiskAnalyze = new System.Windows.Forms.Button();
+            this.btnAlignCommit = new System.Windows.Forms.Button();
+            this.statusStrip = new System.Windows.Forms.StatusStrip();
+            this.stsGit = new System.Windows.Forms.ToolStripStatusLabel();
+            this.stsSep1 = new System.Windows.Forms.ToolStripStatusLabel();
+            this.stsRepo = new System.Windows.Forms.ToolStripStatusLabel();
+            this.stsSep2 = new System.Windows.Forms.ToolStripStatusLabel();
+            this.stsLast = new System.Windows.Forms.ToolStripStatusLabel();
+            this.btnGitBrowse = new System.Windows.Forms.Button();
+            this.lblGitExe = new System.Windows.Forms.Label();
+            this.txtGitExe = new System.Windows.Forms.TextBox();
+            this.btnInitRepo = new System.Windows.Forms.Button();
+            this.grpRepo.SuspendLayout();
+            this.tabs.SuspendLayout();
+            this.tabWorktrees.SuspendLayout();
+            this.pnlWtToolbar.SuspendLayout();
+            ((System.ComponentModel.ISupportInitialize)(this.dgvWorktrees)).BeginInit();
+            this.pnlWtBottom.SuspendLayout();
+            this.tabLog.SuspendLayout();
+            this.pnlLogToolbar.SuspendLayout();
+            this.grpCommon.SuspendLayout();
+            this.statusStrip.SuspendLayout();
+            this.SuspendLayout();
+            //
+            // grpRepo
+            //
+            this.grpRepo.Anchor = ((System.Windows.Forms.AnchorStyles)(((System.Windows.Forms.AnchorStyles.Top | System.Windows.Forms.AnchorStyles.Left)
+            | System.Windows.Forms.AnchorStyles.Right)));
+            this.grpRepo.Controls.Add(this.lblRepoPath);
+            this.grpRepo.Controls.Add(this.txtRepoPath);
+            this.grpRepo.Controls.Add(this.btnBrowseRepo);
+            this.grpRepo.Controls.Add(this.rbNew);
+            this.grpRepo.Controls.Add(this.rbClone);
+            this.grpRepo.Controls.Add(this.lblRemoteUrl);
+            this.grpRepo.Controls.Add(this.txtRemoteUrl);
+            this.grpRepo.Controls.Add(this.lblDefaultBranch);
+            this.grpRepo.Controls.Add(this.txtDefaultBranch);
+            this.grpRepo.Controls.Add(this.lblGitExe);
+            this.grpRepo.Controls.Add(this.txtGitExe);
+            this.grpRepo.Controls.Add(this.btnGitBrowse);
+            this.grpRepo.Controls.Add(this.btnInitRepo);
+            this.grpRepo.Location = new System.Drawing.Point(12, 12);
+            this.grpRepo.Name = "grpRepo";
+            this.grpRepo.Size = new System.Drawing.Size(1096, 138);
+            this.grpRepo.TabIndex = 0;
+            this.grpRepo.TabStop = false;
+            this.grpRepo.Text = "仓库位置";
+            //
+            // lblRepoPath
+            //
+            this.lblRepoPath.AutoSize = true;
+            this.lblRepoPath.Location = new System.Drawing.Point(14, 30);
+            this.lblRepoPath.Name = "lblRepoPath";
+            this.lblRepoPath.Size = new System.Drawing.Size(53, 12);
+            this.lblRepoPath.TabIndex = 0;
+            this.lblRepoPath.Text = "本地路径";
+            //
+            // txtRepoPath
+            //
+            this.txtRepoPath.Anchor = ((System.Windows.Forms.AnchorStyles)(((System.Windows.Forms.AnchorStyles.Top | System.Windows.Forms.AnchorStyles.Left)
+            | System.Windows.Forms.AnchorStyles.Right)));
+            this.txtRepoPath.Location = new System.Drawing.Point(96, 26);
+            this.txtRepoPath.Name = "txtRepoPath";
+            this.txtRepoPath.Size = new System.Drawing.Size(852, 21);
+            this.txtRepoPath.TabIndex = 1;
+            //
+            // btnBrowseRepo
+            //
+            this.btnBrowseRepo.Anchor = ((System.Windows.Forms.AnchorStyles)((System.Windows.Forms.AnchorStyles.Top | System.Windows.Forms.AnchorStyles.Right)));
+            this.btnBrowseRepo.Location = new System.Drawing.Point(968, 25);
+            this.btnBrowseRepo.Name = "btnBrowseRepo";
+            this.btnBrowseRepo.Size = new System.Drawing.Size(116, 25);
+            this.btnBrowseRepo.TabIndex = 2;
+            this.btnBrowseRepo.Text = "浏览...";
+            this.btnBrowseRepo.UseVisualStyleBackColor = true;
+            this.btnBrowseRepo.Click += new System.EventHandler(this.btnBrowseRepo_Click);
+            //
+            // rbNew
+            //
+            this.rbNew.AutoSize = true;
+            this.rbNew.Checked = true;
+            this.rbNew.Location = new System.Drawing.Point(16, 60);
+            this.rbNew.Name = "rbNew";
+            this.rbNew.Size = new System.Drawing.Size(83, 16);
+            this.rbNew.TabIndex = 3;
+            this.rbNew.TabStop = true;
+            this.rbNew.Text = "新建仓库";
+            this.rbNew.UseVisualStyleBackColor = true;
+            this.rbNew.CheckedChanged += new System.EventHandler(this.RbMode_CheckedChanged);
+            //
+            // rbClone
+            //
+            this.rbClone.AutoSize = true;
+            this.rbClone.Location = new System.Drawing.Point(116, 60);
+            this.rbClone.Name = "rbClone";
+            this.rbClone.Size = new System.Drawing.Size(83, 16);
+            this.rbClone.TabIndex = 4;
+            this.rbClone.Text = "克隆已有";
+            this.rbClone.UseVisualStyleBackColor = true;
+            this.rbClone.CheckedChanged += new System.EventHandler(this.RbMode_CheckedChanged);
+            //
+            // lblRemoteUrl
+            //
+            this.lblRemoteUrl.AutoSize = true;
+            this.lblRemoteUrl.Location = new System.Drawing.Point(230, 62);
+            this.lblRemoteUrl.Name = "lblRemoteUrl";
+            this.lblRemoteUrl.Size = new System.Drawing.Size(53, 12);
+            this.lblRemoteUrl.TabIndex = 5;
+            this.lblRemoteUrl.Text = "远程 URL";
+            //
+            // txtRemoteUrl
+            //
+            this.txtRemoteUrl.Anchor = ((System.Windows.Forms.AnchorStyles)(((System.Windows.Forms.AnchorStyles.Top | System.Windows.Forms.AnchorStyles.Left)
+            | System.Windows.Forms.AnchorStyles.Right)));
+            this.txtRemoteUrl.Enabled = false;
+            this.txtRemoteUrl.Location = new System.Drawing.Point(312, 58);
+            this.txtRemoteUrl.Name = "txtRemoteUrl";
+            this.txtRemoteUrl.Size = new System.Drawing.Size(636, 21);
+            this.txtRemoteUrl.TabIndex = 6;
+            //
+            // lblDefaultBranch
+            //
+            this.lblDefaultBranch.AutoSize = true;
+            this.lblDefaultBranch.Location = new System.Drawing.Point(14, 94);
+            this.lblDefaultBranch.Name = "lblDefaultBranch";
+            this.lblDefaultBranch.Size = new System.Drawing.Size(53, 12);
+            this.lblDefaultBranch.TabIndex = 7;
+            this.lblDefaultBranch.Text = "默认分支";
+            //
+            // txtDefaultBranch
+            //
+            this.txtDefaultBranch.Location = new System.Drawing.Point(96, 90);
+            this.txtDefaultBranch.Name = "txtDefaultBranch";
+            this.txtDefaultBranch.Size = new System.Drawing.Size(156, 21);
+            this.txtDefaultBranch.TabIndex = 8;
+            this.txtDefaultBranch.Text = "main";
+            //
+            // lblGitExe
+            //
+            this.lblGitExe.AutoSize = true;
+            this.lblGitExe.Location = new System.Drawing.Point(260, 94);
+            this.lblGitExe.Name = "lblGitExe";
+            this.lblGitExe.Size = new System.Drawing.Size(53, 12);
+            this.lblGitExe.TabIndex = 9;
+            this.lblGitExe.Text = "git.exe";
+            //
+            // txtGitExe
+            //
+            this.txtGitExe.Anchor = ((System.Windows.Forms.AnchorStyles)(((System.Windows.Forms.AnchorStyles.Top | System.Windows.Forms.AnchorStyles.Left)
+            | System.Windows.Forms.AnchorStyles.Right)));
+            this.txtGitExe.Location = new System.Drawing.Point(326, 90);
+            this.txtGitExe.Name = "txtGitExe";
+            this.txtGitExe.Size = new System.Drawing.Size(622, 21);
+            this.txtGitExe.TabIndex = 10;
+            this.txtGitExe.Text = "git";
+            //
+            // btnGitBrowse
+            //
+            this.btnGitBrowse.Anchor = ((System.Windows.Forms.AnchorStyles)((System.Windows.Forms.AnchorStyles.Top | System.Windows.Forms.AnchorStyles.Right)));
+            this.btnGitBrowse.Location = new System.Drawing.Point(968, 89);
+            this.btnGitBrowse.Name = "btnGitBrowse";
+            this.btnGitBrowse.Size = new System.Drawing.Size(116, 25);
+            this.btnGitBrowse.TabIndex = 11;
+            this.btnGitBrowse.Text = "浏览...";
+            this.btnGitBrowse.UseVisualStyleBackColor = true;
+            this.btnGitBrowse.Click += new System.EventHandler(this.btnGitBrowse_Click);
+            //
+            // btnInitRepo
+            //
+            this.btnInitRepo.Anchor = ((System.Windows.Forms.AnchorStyles)((System.Windows.Forms.AnchorStyles.Top | System.Windows.Forms.AnchorStyles.Right)));
+            this.btnInitRepo.Location = new System.Drawing.Point(968, 57);
+            this.btnInitRepo.Name = "btnInitRepo";
+            this.btnInitRepo.Size = new System.Drawing.Size(116, 25);
+            this.btnInitRepo.TabIndex = 12;
+            this.btnInitRepo.Text = "创建";
+            this.btnInitRepo.UseVisualStyleBackColor = true;
+            this.btnInitRepo.Click += new System.EventHandler(this.btnInitRepo_Click);
+            //
+            // tabs
+            //
+            this.tabs.Anchor = ((System.Windows.Forms.AnchorStyles)((((System.Windows.Forms.AnchorStyles.Top | System.Windows.Forms.AnchorStyles.Bottom)
+            | System.Windows.Forms.AnchorStyles.Left)
+            | System.Windows.Forms.AnchorStyles.Right)));
+            this.tabs.Controls.Add(this.tabWorktrees);
+            this.tabs.Controls.Add(this.tabLog);
+            this.tabs.Location = new System.Drawing.Point(12, 156);
+            this.tabs.Name = "tabs";
+            this.tabs.SelectedIndex = 0;
+            this.tabs.Size = new System.Drawing.Size(1096, 474);
+            this.tabs.TabIndex = 1;
+            //
+            // tabWorktrees
+            //
+            this.tabWorktrees.Controls.Add(this.pnlWtToolbar);
+            this.tabWorktrees.Controls.Add(this.dgvWorktrees);
+            this.tabWorktrees.Controls.Add(this.pnlWtBottom);
+            this.tabWorktrees.Location = new System.Drawing.Point(4, 22);
+            this.tabWorktrees.Name = "tabWorktrees";
+            this.tabWorktrees.Padding = new System.Windows.Forms.Padding(4);
+            this.tabWorktrees.Size = new System.Drawing.Size(1088, 412);
+            this.tabWorktrees.TabIndex = 0;
+            this.tabWorktrees.Text = "Worktree 列表";
+            this.tabWorktrees.UseVisualStyleBackColor = true;
+            //
+            // pnlWtToolbar
+            //
+            this.pnlWtToolbar.Anchor = ((System.Windows.Forms.AnchorStyles)(((System.Windows.Forms.AnchorStyles.Top | System.Windows.Forms.AnchorStyles.Left)
+            | System.Windows.Forms.AnchorStyles.Right)));
+            this.pnlWtToolbar.Controls.Add(this.btnWtAdd);
+            this.pnlWtToolbar.Controls.Add(this.btnWtRemove);
+            this.pnlWtToolbar.Controls.Add(this.btnWtUp);
+            this.pnlWtToolbar.Controls.Add(this.btnWtDown);
+            this.pnlWtToolbar.Controls.Add(this.btnWtRead);
+            this.pnlWtToolbar.Controls.Add(this.btnWtClear);
+            this.pnlWtToolbar.Controls.Add(this.lblWtCount);
+            this.pnlWtToolbar.Location = new System.Drawing.Point(4, 4);
+            this.pnlWtToolbar.Name = "pnlWtToolbar";
+            this.pnlWtToolbar.Size = new System.Drawing.Size(1080, 32);
+            this.pnlWtToolbar.TabIndex = 0;
+            //
+            // btnWtAdd
+            //
+            this.btnWtAdd.Location = new System.Drawing.Point(6, 3);
+            this.btnWtAdd.Name = "btnWtAdd";
+            this.btnWtAdd.Size = new System.Drawing.Size(80, 26);
+            this.btnWtAdd.TabIndex = 0;
+            this.btnWtAdd.Text = "添加行";
+            this.btnWtAdd.UseVisualStyleBackColor = true;
+            this.btnWtAdd.Click += new System.EventHandler(this.btnWtAdd_Click);
+            //
+            // btnWtRemove
+            //
+            this.btnWtRemove.Location = new System.Drawing.Point(92, 3);
+            this.btnWtRemove.Name = "btnWtRemove";
+            this.btnWtRemove.Size = new System.Drawing.Size(80, 26);
+            this.btnWtRemove.TabIndex = 1;
+            this.btnWtRemove.Text = "删除行";
+            this.btnWtRemove.UseVisualStyleBackColor = true;
+            this.btnWtRemove.Click += new System.EventHandler(this.btnWtRemove_Click);
+            //
+            // btnWtUp
+            //
+            this.btnWtUp.Location = new System.Drawing.Point(178, 3);
+            this.btnWtUp.Name = "btnWtUp";
+            this.btnWtUp.Size = new System.Drawing.Size(50, 26);
+            this.btnWtUp.TabIndex = 2;
+            this.btnWtUp.Text = "上移";
+            this.btnWtUp.UseVisualStyleBackColor = true;
+            this.btnWtUp.Click += new System.EventHandler(this.btnWtUp_Click);
+            //
+            // btnWtDown
+            //
+            this.btnWtDown.Location = new System.Drawing.Point(234, 3);
+            this.btnWtDown.Name = "btnWtDown";
+            this.btnWtDown.Size = new System.Drawing.Size(50, 26);
+            this.btnWtDown.TabIndex = 3;
+            this.btnWtDown.Text = "下移";
+            this.btnWtDown.UseVisualStyleBackColor = true;
+            this.btnWtDown.Click += new System.EventHandler(this.btnWtDown_Click);
+            //
+            // btnWtRead
+            //
+            this.btnWtRead.Location = new System.Drawing.Point(290, 3);
+            this.btnWtRead.Name = "btnWtRead";
+            this.btnWtRead.Size = new System.Drawing.Size(140, 26);
+            this.btnWtRead.TabIndex = 4;
+            this.btnWtRead.Text = "读取现有 worktree";
+            this.btnWtRead.UseVisualStyleBackColor = true;
+            this.btnWtRead.Click += new System.EventHandler(this.btnWtRead_Click);
+            //
+            // btnWtClear
+            //
+            this.btnWtClear.Location = new System.Drawing.Point(436, 3);
+            this.btnWtClear.Name = "btnWtClear";
+            this.btnWtClear.Size = new System.Drawing.Size(80, 26);
+            this.btnWtClear.TabIndex = 5;
+            this.btnWtClear.Text = "清空";
+            this.btnWtClear.UseVisualStyleBackColor = true;
+            this.btnWtClear.Click += new System.EventHandler(this.btnWtClear_Click);
+            //
+            // lblWtCount
+            //
+            this.lblWtCount.Anchor = ((System.Windows.Forms.AnchorStyles)((System.Windows.Forms.AnchorStyles.Top | System.Windows.Forms.AnchorStyles.Right)));
+            this.lblWtCount.AutoSize = true;
+            this.lblWtCount.Location = new System.Drawing.Point(990, 10);
+            this.lblWtCount.Name = "lblWtCount";
+            this.lblWtCount.Size = new System.Drawing.Size(53, 12);
+            this.lblWtCount.TabIndex = 6;
+            this.lblWtCount.Text = "行数 0/99";
+            //
+            // dgvWorktrees
+            //
+            this.dgvWorktrees.AllowUserToAddRows = false;
+            this.dgvWorktrees.AllowUserToDeleteRows = false;
+            this.dgvWorktrees.AllowUserToResizeRows = false;
+            this.dgvWorktrees.Anchor = ((System.Windows.Forms.AnchorStyles)((((System.Windows.Forms.AnchorStyles.Top | System.Windows.Forms.AnchorStyles.Bottom)
+            | System.Windows.Forms.AnchorStyles.Left)
+            | System.Windows.Forms.AnchorStyles.Right)));
+            this.dgvWorktrees.ColumnHeadersHeightSizeMode = System.Windows.Forms.DataGridViewColumnHeadersHeightSizeMode.AutoSize;
+            this.dgvWorktrees.Columns.AddRange(new System.Windows.Forms.DataGridViewColumn[] {
+            this.colNum,
+            this.colPath,
+            this.colBranch,
+            this.colName,
+            this.colEmail});
+            this.dgvWorktrees.Location = new System.Drawing.Point(4, 40);
+            this.dgvWorktrees.MultiSelect = false;
+            this.dgvWorktrees.Name = "dgvWorktrees";
+            this.dgvWorktrees.RowHeadersVisible = false;
+            this.dgvWorktrees.RowTemplate.Height = 23;
+            this.dgvWorktrees.SelectionMode = System.Windows.Forms.DataGridViewSelectionMode.CellSelect;
+            this.dgvWorktrees.Size = new System.Drawing.Size(1080, 314);
+            this.dgvWorktrees.TabIndex = 1;
+            //
+            // colNum
+            //
+            this.colNum.HeaderText = "#";
+            this.colNum.Name = "colNum";
+            this.colNum.ReadOnly = true;
+            this.colNum.Width = 40;
+            //
+            // colPath
+            //
+            this.colPath.AutoSizeMode = System.Windows.Forms.DataGridViewAutoSizeColumnMode.Fill;
+            this.colPath.FillWeight = 45F;
+            this.colPath.HeaderText = "worktree 路径";
+            this.colPath.Name = "colPath";
+            //
+            // colBranch
+            //
+            this.colBranch.AutoSizeMode = System.Windows.Forms.DataGridViewAutoSizeColumnMode.Fill;
+            this.colBranch.FillWeight = 22F;
+            this.colBranch.HeaderText = "分支";
+            this.colBranch.Name = "colBranch";
+            //
+            // colName
+            //
+            this.colName.AutoSizeMode = System.Windows.Forms.DataGridViewAutoSizeColumnMode.Fill;
+            this.colName.FillWeight = 16F;
+            this.colName.HeaderText = "user.name";
+            this.colName.Name = "colName";
+            //
+            // colEmail
+            //
+            this.colEmail.AutoSizeMode = System.Windows.Forms.DataGridViewAutoSizeColumnMode.Fill;
+            this.colEmail.FillWeight = 17F;
+            this.colEmail.HeaderText = "user.email";
+            this.colEmail.Name = "colEmail";
+            //
+            // pnlWtBottom
+            //
+            this.pnlWtBottom.Anchor = ((System.Windows.Forms.AnchorStyles)(((System.Windows.Forms.AnchorStyles.Bottom | System.Windows.Forms.AnchorStyles.Left)
+            | System.Windows.Forms.AnchorStyles.Right)));
+            this.pnlWtBottom.Controls.Add(this.chkDryRun);
+            this.pnlWtBottom.Controls.Add(this.btnPreview);
+            this.pnlWtBottom.Controls.Add(this.btnExecute);
+            this.pnlWtBottom.Location = new System.Drawing.Point(4, 360);
+            this.pnlWtBottom.Name = "pnlWtBottom";
+            this.pnlWtBottom.Size = new System.Drawing.Size(1080, 46);
+            this.pnlWtBottom.TabIndex = 2;
+            //
+            // chkDryRun
+            //
+            this.chkDryRun.AutoSize = true;
+            this.chkDryRun.Checked = true;
+            this.chkDryRun.CheckState = System.Windows.Forms.CheckState.Checked;
+            this.chkDryRun.Location = new System.Drawing.Point(6, 15);
+            this.chkDryRun.Name = "chkDryRun";
+            this.chkDryRun.Size = new System.Drawing.Size(227, 16);
+            this.chkDryRun.TabIndex = 0;
+            this.chkDryRun.Text = "Dry-run（仅预览命令，不实际执行）";
+            this.chkDryRun.UseVisualStyleBackColor = true;
+            //
+            // btnPreview
+            //
+            this.btnPreview.Anchor = ((System.Windows.Forms.AnchorStyles)((System.Windows.Forms.AnchorStyles.Top | System.Windows.Forms.AnchorStyles.Right)));
+            this.btnPreview.Location = new System.Drawing.Point(828, 10);
+            this.btnPreview.Name = "btnPreview";
+            this.btnPreview.Size = new System.Drawing.Size(120, 28);
+            this.btnPreview.TabIndex = 1;
+            this.btnPreview.Text = "预览命令";
+            this.btnPreview.UseVisualStyleBackColor = true;
+            this.btnPreview.Click += new System.EventHandler(this.btnPreview_Click);
+            //
+            // btnExecute
+            //
+            this.btnExecute.Anchor = ((System.Windows.Forms.AnchorStyles)((System.Windows.Forms.AnchorStyles.Top | System.Windows.Forms.AnchorStyles.Right)));
+            this.btnExecute.Location = new System.Drawing.Point(954, 10);
+            this.btnExecute.Name = "btnExecute";
+            this.btnExecute.Size = new System.Drawing.Size(120, 28);
+            this.btnExecute.TabIndex = 2;
+            this.btnExecute.Text = "执行";
+            this.btnExecute.UseVisualStyleBackColor = true;
+            this.btnExecute.Click += new System.EventHandler(this.btnExecute_Click);
+            //
+            // tabLog
+            //
+            this.tabLog.Controls.Add(this.pnlLogToolbar);
+            this.tabLog.Controls.Add(this.txtLog);
+            this.tabLog.Location = new System.Drawing.Point(4, 22);
+            this.tabLog.Name = "tabLog";
+            this.tabLog.Padding = new System.Windows.Forms.Padding(4);
+            this.tabLog.Size = new System.Drawing.Size(1088, 412);
+            this.tabLog.TabIndex = 1;
+            this.tabLog.Text = "命令日志";
+            this.tabLog.UseVisualStyleBackColor = true;
+            //
+            // pnlLogToolbar
+            //
+            this.pnlLogToolbar.Anchor = ((System.Windows.Forms.AnchorStyles)(((System.Windows.Forms.AnchorStyles.Top | System.Windows.Forms.AnchorStyles.Left)
+            | System.Windows.Forms.AnchorStyles.Right)));
+            this.pnlLogToolbar.Controls.Add(this.btnLogCopy);
+            this.pnlLogToolbar.Controls.Add(this.btnLogClear);
+            this.pnlLogToolbar.Controls.Add(this.btnLogSaveBat);
+            this.pnlLogToolbar.Controls.Add(this.btnLogSavePs1);
+            this.pnlLogToolbar.Location = new System.Drawing.Point(4, 4);
+            this.pnlLogToolbar.Name = "pnlLogToolbar";
+            this.pnlLogToolbar.Size = new System.Drawing.Size(1080, 32);
+            this.pnlLogToolbar.TabIndex = 0;
+            //
+            // btnLogCopy
+            //
+            this.btnLogCopy.Location = new System.Drawing.Point(6, 3);
+            this.btnLogCopy.Name = "btnLogCopy";
+            this.btnLogCopy.Size = new System.Drawing.Size(100, 26);
+            this.btnLogCopy.TabIndex = 0;
+            this.btnLogCopy.Text = "复制全部";
+            this.btnLogCopy.UseVisualStyleBackColor = true;
+            this.btnLogCopy.Click += new System.EventHandler(this.btnLogCopy_Click);
+            //
+            // btnLogClear
+            //
+            this.btnLogClear.Location = new System.Drawing.Point(112, 3);
+            this.btnLogClear.Name = "btnLogClear";
+            this.btnLogClear.Size = new System.Drawing.Size(100, 26);
+            this.btnLogClear.TabIndex = 1;
+            this.btnLogClear.Text = "清空日志";
+            this.btnLogClear.UseVisualStyleBackColor = true;
+            this.btnLogClear.Click += new System.EventHandler(this.btnLogClear_Click);
+            //
+            // btnLogSaveBat
+            //
+            this.btnLogSaveBat.Location = new System.Drawing.Point(218, 3);
+            this.btnLogSaveBat.Name = "btnLogSaveBat";
+            this.btnLogSaveBat.Size = new System.Drawing.Size(100, 26);
+            this.btnLogSaveBat.TabIndex = 2;
+            this.btnLogSaveBat.Text = "导出 .bat";
+            this.btnLogSaveBat.UseVisualStyleBackColor = true;
+            this.btnLogSaveBat.Click += new System.EventHandler(this.btnLogSaveBat_Click);
+            //
+            // btnLogSavePs1
+            //
+            this.btnLogSavePs1.Location = new System.Drawing.Point(324, 3);
+            this.btnLogSavePs1.Name = "btnLogSavePs1";
+            this.btnLogSavePs1.Size = new System.Drawing.Size(100, 26);
+            this.btnLogSavePs1.TabIndex = 3;
+            this.btnLogSavePs1.Text = "导出 .ps1";
+            this.btnLogSavePs1.UseVisualStyleBackColor = true;
+            this.btnLogSavePs1.Click += new System.EventHandler(this.btnLogSavePs1_Click);
+            //
+            // txtLog
+            //
+            this.txtLog.Anchor = ((System.Windows.Forms.AnchorStyles)((((System.Windows.Forms.AnchorStyles.Top | System.Windows.Forms.AnchorStyles.Bottom)
+            | System.Windows.Forms.AnchorStyles.Left)
+            | System.Windows.Forms.AnchorStyles.Right)));
+            this.txtLog.BackColor = System.Drawing.SystemColors.Window;
+            this.txtLog.Font = new System.Drawing.Font("Consolas", 9F, System.Drawing.FontStyle.Regular, System.Drawing.GraphicsUnit.Point, ((byte)(0)));
+            this.txtLog.Location = new System.Drawing.Point(4, 40);
+            this.txtLog.Name = "txtLog";
+            this.txtLog.ReadOnly = true;
+            this.txtLog.Size = new System.Drawing.Size(1080, 366);
+            this.txtLog.TabIndex = 1;
+            this.txtLog.Text = "";
+            //
+            // grpCommon
+            //
+            this.grpCommon.Anchor = ((System.Windows.Forms.AnchorStyles)(((System.Windows.Forms.AnchorStyles.Bottom | System.Windows.Forms.AnchorStyles.Left)
+            | System.Windows.Forms.AnchorStyles.Right)));
+            this.grpCommon.Controls.Add(this.btnCleanOrphan);
+            this.grpCommon.Controls.Add(this.btnCleanMerged);
+            this.grpCommon.Controls.Add(this.btnUpdateRemote);
+            this.grpCommon.Controls.Add(this.btnDiskAnalyze);
+            this.grpCommon.Controls.Add(this.btnAlignCommit);
+            this.grpCommon.Location = new System.Drawing.Point(12, 630);
+            this.grpCommon.Name = "grpCommon";
+            this.grpCommon.Size = new System.Drawing.Size(1096, 62);
+            this.grpCommon.TabIndex = 2;
+            this.grpCommon.TabStop = false;
+            this.grpCommon.Text = "常用功能";
+            //
+            // btnCleanOrphan
+            //
+            this.btnCleanOrphan.Location = new System.Drawing.Point(12, 24);
+            this.btnCleanOrphan.Name = "btnCleanOrphan";
+            this.btnCleanOrphan.Size = new System.Drawing.Size(200, 30);
+            this.btnCleanOrphan.TabIndex = 0;
+            this.btnCleanOrphan.Text = "清理多余提交和引用记录";
+            this.btnCleanOrphan.UseVisualStyleBackColor = true;
+            this.btnCleanOrphan.Click += new System.EventHandler(this.btnCleanOrphan_Click);
+            //
+            // btnCleanMerged
+            //
+            this.btnCleanMerged.Location = new System.Drawing.Point(230, 24);
+            this.btnCleanMerged.Name = "btnCleanMerged";
+            this.btnCleanMerged.Size = new System.Drawing.Size(200, 30);
+            this.btnCleanMerged.TabIndex = 1;
+            this.btnCleanMerged.Text = "清理已合并分支";
+            this.btnCleanMerged.UseVisualStyleBackColor = true;
+            this.btnCleanMerged.Click += new System.EventHandler(this.btnCleanMerged_Click);
+            //
+            // btnUpdateRemote
+            //
+            this.btnUpdateRemote.Location = new System.Drawing.Point(448, 24);
+            this.btnUpdateRemote.Name = "btnUpdateRemote";
+            this.btnUpdateRemote.Size = new System.Drawing.Size(200, 30);
+            this.btnUpdateRemote.TabIndex = 2;
+            this.btnUpdateRemote.Text = "更新远端";
+            this.btnUpdateRemote.UseVisualStyleBackColor = true;
+            this.btnUpdateRemote.Click += new System.EventHandler(this.btnUpdateRemote_Click);
+            //
+            // btnDiskAnalyze
+            //
+            this.btnDiskAnalyze.Location = new System.Drawing.Point(666, 24);
+            this.btnDiskAnalyze.Name = "btnDiskAnalyze";
+            this.btnDiskAnalyze.Size = new System.Drawing.Size(200, 30);
+            this.btnDiskAnalyze.TabIndex = 3;
+            this.btnDiskAnalyze.Text = "仓库磁盘分析";
+            this.btnDiskAnalyze.UseVisualStyleBackColor = true;
+            this.btnDiskAnalyze.Click += new System.EventHandler(this.btnDiskAnalyze_Click);
+            //
+            // btnAlignCommit
+            //
+            this.btnAlignCommit.Anchor = ((System.Windows.Forms.AnchorStyles)((System.Windows.Forms.AnchorStyles.Top | System.Windows.Forms.AnchorStyles.Right)));
+            this.btnAlignCommit.Location = new System.Drawing.Point(884, 24);
+            this.btnAlignCommit.Name = "btnAlignCommit";
+            this.btnAlignCommit.Size = new System.Drawing.Size(200, 30);
+            this.btnAlignCommit.TabIndex = 4;
+            this.btnAlignCommit.Text = "对齐最新提交";
+            this.btnAlignCommit.UseVisualStyleBackColor = true;
+            this.btnAlignCommit.Click += new System.EventHandler(this.btnAlignCommit_Click);
+            //
+            // statusStrip
+            //
+            this.statusStrip.Items.AddRange(new System.Windows.Forms.ToolStripItem[] {
+            this.stsGit,
+            this.stsSep1,
+            this.stsRepo,
+            this.stsSep2,
+            this.stsLast});
+            this.statusStrip.Location = new System.Drawing.Point(0, 699);
+            this.statusStrip.Name = "statusStrip";
+            this.statusStrip.Size = new System.Drawing.Size(1120, 22);
+            this.statusStrip.TabIndex = 3;
+            //
+            // stsGit
+            //
+            this.stsGit.Name = "stsGit";
+            this.stsGit.Size = new System.Drawing.Size(63, 17);
+            this.stsGit.Text = "git: 检测中";
+            //
+            // stsSep1
+            //
+            this.stsSep1.Name = "stsSep1";
+            this.stsSep1.Size = new System.Drawing.Size(10, 17);
+            this.stsSep1.Text = "|";
+            //
+            // stsRepo
+            //
+            this.stsRepo.Name = "stsRepo";
+            this.stsRepo.Size = new System.Drawing.Size(59, 17);
+            this.stsRepo.Text = "仓库: 未选";
+            //
+            // stsSep2
+            //
+            this.stsSep2.Name = "stsSep2";
+            this.stsSep2.Size = new System.Drawing.Size(10, 17);
+            this.stsSep2.Text = "|";
+            //
+            // stsLast
+            //
+            this.stsLast.Name = "stsLast";
+            this.stsLast.Size = new System.Drawing.Size(65, 17);
+            this.stsLast.Text = "等待操作";
+            //
+            // MainForm
+            //
+            this.AutoScaleDimensions = new System.Drawing.SizeF(6F, 12F);
+            this.AutoScaleMode = System.Windows.Forms.AutoScaleMode.Font;
+            this.ClientSize = new System.Drawing.Size(1120, 721);
+            this.Controls.Add(this.grpRepo);
+            this.Controls.Add(this.tabs);
+            this.Controls.Add(this.grpCommon);
+            this.Controls.Add(this.statusStrip);
+            this.MinimumSize = new System.Drawing.Size(920, 640);
+            this.Name = "MainForm";
+            this.StartPosition = System.Windows.Forms.FormStartPosition.CenterScreen;
+            this.Text = "Git Tree Manager";
+            this.Load += new System.EventHandler(this.MainForm_Load);
+            this.grpRepo.ResumeLayout(false);
+            this.grpRepo.PerformLayout();
+            this.tabs.ResumeLayout(false);
+            this.tabWorktrees.ResumeLayout(false);
+            this.pnlWtToolbar.ResumeLayout(false);
+            this.pnlWtToolbar.PerformLayout();
+            ((System.ComponentModel.ISupportInitialize)(this.dgvWorktrees)).EndInit();
+            this.pnlWtBottom.ResumeLayout(false);
+            this.pnlWtBottom.PerformLayout();
+            this.tabLog.ResumeLayout(false);
+            this.pnlLogToolbar.ResumeLayout(false);
+            this.grpCommon.ResumeLayout(false);
+            this.statusStrip.ResumeLayout(false);
+            this.statusStrip.PerformLayout();
+            this.ResumeLayout(false);
+            this.PerformLayout();
+        }
+
+        #endregion
+
+        private System.Windows.Forms.GroupBox grpRepo;
+        private System.Windows.Forms.Label lblRepoPath;
+        private System.Windows.Forms.TextBox txtRepoPath;
+        private System.Windows.Forms.Button btnBrowseRepo;
+        private System.Windows.Forms.RadioButton rbNew;
+        private System.Windows.Forms.RadioButton rbClone;
+        private System.Windows.Forms.Label lblRemoteUrl;
+        private System.Windows.Forms.TextBox txtRemoteUrl;
+        private System.Windows.Forms.Label lblDefaultBranch;
+        private System.Windows.Forms.TextBox txtDefaultBranch;
+        private System.Windows.Forms.Label lblGitExe;
+        private System.Windows.Forms.TextBox txtGitExe;
+        private System.Windows.Forms.Button btnGitBrowse;
+        private System.Windows.Forms.Button btnInitRepo;
+        private System.Windows.Forms.TabControl tabs;
+        private System.Windows.Forms.TabPage tabWorktrees;
+        private System.Windows.Forms.Panel pnlWtToolbar;
+        private System.Windows.Forms.Button btnWtAdd;
+        private System.Windows.Forms.Button btnWtRemove;
+        private System.Windows.Forms.Button btnWtUp;
+        private System.Windows.Forms.Button btnWtDown;
+        private System.Windows.Forms.Button btnWtRead;
+        private System.Windows.Forms.Button btnWtClear;
+        private System.Windows.Forms.Label lblWtCount;
+        private System.Windows.Forms.DataGridView dgvWorktrees;
+        private System.Windows.Forms.DataGridViewTextBoxColumn colNum;
+        private System.Windows.Forms.DataGridViewTextBoxColumn colPath;
+        private System.Windows.Forms.DataGridViewTextBoxColumn colBranch;
+        private System.Windows.Forms.DataGridViewTextBoxColumn colName;
+        private System.Windows.Forms.DataGridViewTextBoxColumn colEmail;
+        private System.Windows.Forms.Panel pnlWtBottom;
+        private System.Windows.Forms.CheckBox chkDryRun;
+        private System.Windows.Forms.Button btnPreview;
+        private System.Windows.Forms.Button btnExecute;
+        private System.Windows.Forms.TabPage tabLog;
+        private System.Windows.Forms.Panel pnlLogToolbar;
+        private System.Windows.Forms.Button btnLogCopy;
+        private System.Windows.Forms.Button btnLogClear;
+        private System.Windows.Forms.Button btnLogSaveBat;
+        private System.Windows.Forms.Button btnLogSavePs1;
+        private System.Windows.Forms.RichTextBox txtLog;
+        private System.Windows.Forms.GroupBox grpCommon;
+        private System.Windows.Forms.Button btnCleanOrphan;
+        private System.Windows.Forms.Button btnCleanMerged;
+        private System.Windows.Forms.Button btnUpdateRemote;
+        private System.Windows.Forms.Button btnDiskAnalyze;
+        private System.Windows.Forms.Button btnAlignCommit;
+        private System.Windows.Forms.StatusStrip statusStrip;
+        private System.Windows.Forms.ToolStripStatusLabel stsGit;
+        private System.Windows.Forms.ToolStripStatusLabel stsSep1;
+        private System.Windows.Forms.ToolStripStatusLabel stsRepo;
+        private System.Windows.Forms.ToolStripStatusLabel stsSep2;
+        private System.Windows.Forms.ToolStripStatusLabel stsLast;
+    }
+}
