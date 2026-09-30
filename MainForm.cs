@@ -14,13 +14,13 @@ namespace GitTreeManager
     {
         private const int MaxRows = 99;
 
-        // 终端色板（终端语义：命令蓝 / stderr 红 / stdout 黑 / meta 灰 / 成功绿 / 失败红加粗）
-        private static readonly Color ColCmd = Color.FromArgb(0, 0, 160);
-        private static readonly Color ColStd = Color.FromArgb(30, 30, 30);
-        private static readonly Color ColErr = Color.FromArgb(178, 0, 0);
-        private static readonly Color ColMeta = Color.FromArgb(96, 96, 96);
-        private static readonly Color ColDone = Color.FromArgb(0, 128, 0);
-        private static readonly Color ColFail = Color.FromArgb(200, 0, 0);
+        // 终端色板（VS Code Dark+ 风格，深底 #1E1E1E 上高对比）
+        private static readonly Color ColCmd = Color.FromArgb(86, 156, 214);   // 亮蓝
+        private static readonly Color ColStd = Color.FromArgb(212, 212, 212);  // 浅灰
+        private static readonly Color ColErr = Color.FromArgb(244, 71, 71);    // 亮红
+        private static readonly Color ColMeta = Color.FromArgb(140, 140, 140); // 中灰
+        private static readonly Color ColDone = Color.FromArgb(137, 209, 133); // 亮绿
+        private static readonly Color ColFail = Color.FromArgb(251, 109, 109); // 亮红（加粗）
 
         private readonly ConfigStore _store = new ConfigStore();
         private readonly GitCommandBuilder _builder = new GitCommandBuilder();
@@ -797,14 +797,14 @@ namespace GitTreeManager
             AppendTokens(cmd.Colorize(prefix));
         }
 
-        private static readonly Color TokCmd = Color.FromArgb(0, 0, 160);
-        private static readonly Color TokKeyword = Color.FromArgb(0, 90, 160);
-        private static readonly Color TokOption = Color.FromArgb(130, 0, 130);
-        private static readonly Color TokPath = Color.FromArgb(0, 100, 60);
-        private static readonly Color TokConstant = Color.FromArgb(150, 90, 0);
-        private static readonly Color TokEnvVar = Color.FromArgb(0, 100, 130);
-        private static readonly Color TokValue = Color.FromArgb(60, 60, 60);
-        private static readonly Color TokPlain = Color.FromArgb(30, 30, 30);
+        private static readonly Color TokCmd = Color.FromArgb(86, 156, 214);     // 亮蓝 git
+        private static readonly Color TokKeyword = Color.FromArgb(220, 220, 170);// 淡黄 子命令
+        private static readonly Color TokOption = Color.FromArgb(197, 134, 192); // 紫 选项
+        private static readonly Color TokPath = Color.FromArgb(206, 145, 120);   // 橙 路径
+        private static readonly Color TokConstant = Color.FromArgb(181, 206, 168);// 绿 true/false
+        private static readonly Color TokEnvVar = Color.FromArgb(78, 201, 176);  // 青 env 前缀
+        private static readonly Color TokValue = Color.FromArgb(156, 220, 254);  // 淡蓝 参数值
+        private static readonly Color TokPlain = Color.FromArgb(212, 212, 212);  // 浅灰 空格
 
         private void AppendTokens(IEnumerable<TermToken> tokens)
         {
