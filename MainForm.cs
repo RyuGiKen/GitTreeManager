@@ -64,6 +64,11 @@ namespace GitTreeManager
             // 类型列由 Path 下的 .git 是目录还是文件自动判定；用户改 Path 或 RepoPath 时刷新
             dgvWorktrees.CellValueChanged += DgvWt_CellValueChanged;
             txtRepoPath.TextChanged += (s, ev) => RefreshAllRowTypes();
+            // UpdatePrompt 每次都同步跑一条 git rev-parse，逐字符敲不合适；挂 Leave（失焦=编辑完成）
+            txtRepoPath.Leave += (s, ev) => { UpdatePrompt(); RefreshAllRowTypes(); };
+            txtRepoPath.KeyDown += (s, ev) => { if (ev.KeyCode == Keys.Enter) { ProcessTxtRepoEnter(); ev.SuppressKeyPress = true; } };
+            txtGitExe.Leave += (s, ev) => RefreshGitVersion();
+            txtGitExe.KeyDown += (s, ev) => { if (ev.KeyCode == Keys.Enter) { RefreshGitVersion(); ev.SuppressKeyPress = true; } };
             RefreshAllRowTypes();
             ReflowGlobal();
             LogMeta("GitTreeManager 终端 · 输入 git 命令直接回车执行 · ↑↓ 翻历史 · Ctrl+C 中断当前命令");
@@ -82,6 +87,23 @@ namespace GitTreeManager
             {
                 string gitPath = Path.Combine(path.Trim(), ".git");
                 return Directory.Exists(gitPath);
+            }
+            catch { return false; }
+        }
+
+        /// <summary>
+        /// RepoPath 是否已经是一个 git 仓库根或 linked worktree。
+        /// linked worktree 的 .git 是文件指针（gitdir: ...），Directory.Exists 会返回 false，
+        /// 所以这里要同时判目录与文件——否则指向 worktree 时被误当成"没仓库"。
+        /// </summary>
+        private static bool RepoIsGitRepo(string path)
+        {
+            if (string.IsNullOrWhiteSpace(path)) return false;
+            try
+            {
+                if (!Directory.Exists(path)) return false;
+                string gitPath = Path.Combine(path.Trim(), ".git");
+                return Directory.Exists(gitPath) || File.Exists(gitPath);
             }
             catch { return false; }
         }
@@ -143,6 +165,7 @@ namespace GitTreeManager
                     txtRepoPath.Text = dlg.SelectedPath;
                     stsRepo.Text = "仓库: " + dlg.SelectedPath;
                     UpdatePrompt();
+                    RefreshAllRowTypes();
                 }
             }
         }
@@ -176,6 +199,14 @@ namespace GitTreeManager
             if (err != null)
             {
                 MessageBox.Show(this, err, "参数不完整", MessageBoxButtons.OK, MessageBoxIcon.Warning);
+                return;
+            }
+            // RepoPath 已经是 git 仓库（主仓库或 linked worktree）→ 不该再 init/clone
+            if (RepoIsGitRepo(s.RepoPath))
+            {
+                string kind = DetectIsMain(s.RepoPath) ? "主仓库" : "已存在的 linked worktree";
+                LogMeta("[skip] 目标路径已经是 " + kind + "，无需" + (s.Mode == RepoMode.Clone ? "克隆" : "创建") + "。");
+                LogMeta("       直接编辑 Worktree 表格后点『执行』，或用下方 5 个常用功能。");
                 return;
             }
             var cmds = _builder.BuildInitOrCloneOnly(s);
@@ -327,12 +358,15 @@ namespace GitTreeManager
                 MessageBox.Show(this, err, "参数不完整", MessageBoxButtons.OK, MessageBoxIcon.Warning);
                 return;
             }
-            // 仓库不存在 → 引导用户先点 创建/克隆
-            if (!Directory.Exists(Path.Combine(s.RepoPath, ".git")))
+            // RepoPath 可能是主仓库(.git 目录)，也可能直接指向一个 linked worktree(.git 文件指针)——都算合法
+            if (!RepoIsGitRepo(s.RepoPath))
             {
                 MessageBox.Show(this,
-                    "主仓库不存在或未初始化。\n请先在上方『仓库位置』填好路径后点『创建』或『克隆』，再回来执行 Worktree 流水线。",
-                    "缺仓库", MessageBoxButtons.OK, MessageBoxIcon.Exclamation);
+                    "目标路径不是一个 git 仓库。\n" +
+                    "· 想新建 → 先在上方『仓库位置』点『创建』\n" +
+                    "· 想克隆 → 填好远程 URL 后点『克隆』\n" +
+                    "· 指向已有仓库/worktree → 路径下应存在 .git（目录或 gitdir: 指针文件）",
+                    "非 git 仓库", MessageBoxButtons.OK, MessageBoxIcon.Exclamation);
                 return;
             }
             var cmds = _builder.BuildWorktreeApply(s, MakeBranchProbe(s));
@@ -340,12 +374,13 @@ namespace GitTreeManager
         }
 
         /// <summary>
-        /// 返回一个分支存在性探针；仓库目录不存在时（首次 init）返回 null 让 builder 一律按 -b 生成。
+        /// 返回一个分支存在性探针；RepoPath 不是仓库（或不存在）时返回 null 让 builder 一律按 -b 生成。
+        /// 允许 RepoPath 是 linked worktree：git -C &lt;wt&gt; branch --list 会走 common dir，语义一致。
         /// 每次探测都是一条真跑的 `git branch --list <b>` 指令，同步写到终端里以便观察。
         /// </summary>
         private System.Func<string, bool> MakeBranchProbe(AppSettings s)
         {
-            if (string.IsNullOrWhiteSpace(s.RepoPath) || !Directory.Exists(Path.Combine(s.RepoPath, ".git"))) return null;
+            if (string.IsNullOrWhiteSpace(s.RepoPath) || !RepoIsGitRepo(s.RepoPath)) return null;
             return branch =>
             {
                 if (string.IsNullOrWhiteSpace(branch)) return false;
@@ -584,6 +619,15 @@ namespace GitTreeManager
                 return string.IsNullOrEmpty(br) ? ("$ " + name) : ("$ " + name + " (" + br + ")");
             }
             catch { return "$"; }
+        }
+
+        /// <summary>
+        /// 用户在 RepoPath 里敲回车：等价于离开编辑焦点，触发 prompt 刷新与 git 版本检测。
+        /// </summary>
+        private void ProcessTxtRepoEnter()
+        {
+            UpdatePrompt();
+            RefreshAllRowTypes();
         }
 
         /// <summary>
