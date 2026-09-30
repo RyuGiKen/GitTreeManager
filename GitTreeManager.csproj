@@ -55,6 +55,7 @@
     <Compile Include="Services\GitRunner.cs" />
     <Compile Include="Services\ConfigStore.cs" />
     <Compile Include="Services\GitLocator.cs" />
+    <Compile Include="Services\DiskAnalyzer.cs" />
     <Compile Include="Properties\AssemblyInfo.cs" />
   </ItemGroup>
   <ItemGroup>

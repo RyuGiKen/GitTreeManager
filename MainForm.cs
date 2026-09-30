@@ -311,7 +311,9 @@ namespace GitTreeManager
         {
             var s = CollectSettingsFromUi();
             LogMeta("[功能] 仓库磁盘分析");
-            RunBatch(_builder.BuildDiskAnalysis(s));
+            string repo = s.RepoPath;
+            // git 侧命令 (count-objects) 与文件系统侧扫描都跑；Dry-run 只影响 git 命令是否真跑，扫描是只读的所以始终执行。
+            RunBatch(_builder.BuildDiskAnalysis(s), () => DiskAnalyzer.Report(this, repo));
         }
 
         private void btnAlignCommit_Click(object sender, EventArgs e)
@@ -321,15 +323,22 @@ namespace GitTreeManager
             RunBatch(_builder.BuildAlignLatestCommit(s));
         }
 
-        /// <summary>统一入口：Dry-run 勾选就只输出预览；否则弹二次确认 + 后台线程跑，不阻塞 UI。</summary>
-        private void RunBatch(IList<GitCommand> cmds)
+        /// <summary>统一入口：Dry-run 勾选就只输出预览；否则弹二次确认 + 后台线程跑，不阻塞 UI。
+        /// onAfterRun 在跑完（或 dry-run 打印完）后回调；后台线程场景下在同一个线程内执行，保证顺序。</summary>
+        private void RunBatch(IList<GitCommand> cmds, Action onAfterRun = null)
         {
-            if (cmds == null || cmds.Count == 0) { LogMeta("[skip] 没有可执行的命令。"); return; }
+            if (cmds == null || cmds.Count == 0)
+            {
+                LogMeta("[skip] 没有可执行的命令。");
+                if (onAfterRun != null) onAfterRun();
+                return;
+            }
             bool dry = chkDryRun.Checked;
             if (dry)
             {
                 for (int i = 0; i < cmds.Count; i++) LogCmd("[" + (i + 1) + "/" + cmds.Count + "] " + cmds[i].Display);
                 LogMeta("── Dry-run 未执行，共 " + cmds.Count + " 条 ──");
+                if (onAfterRun != null) onAfterRun();
                 return;
             }
             var r = MessageBox.Show(this,
@@ -337,7 +346,18 @@ namespace GitTreeManager
                 "二次确认", MessageBoxButtons.YesNo, MessageBoxIcon.Exclamation);
             if (r != DialogResult.Yes) return;
             var s = CollectSettingsFromUi();
-            StartOnBackground(() => _runner.RunAll(s.GitExe, cmds, false, this));
+            if (onAfterRun == null)
+            {
+                StartOnBackground(() => _runner.RunAll(s.GitExe, cmds, false, this));
+            }
+            else
+            {
+                StartOnBackground(() =>
+                {
+                    _runner.RunAll(s.GitExe, cmds, false, this);
+                    onAfterRun();
+                });
+            }
         }
 
         private void StartOnBackground(Action work)

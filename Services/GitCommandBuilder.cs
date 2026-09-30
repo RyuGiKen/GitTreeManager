@@ -168,13 +168,13 @@ namespace GitTreeManager.Services
         }
 
         // ---------- 功能 4：仓库磁盘分析 ----------
-        // git 侧提供 count-objects 与每个 pack 文件明细；文件系统侧扫描由 C# 直接遍历，不走 git。
+        // git 侧只跑 count-objects（`verify-pack` 必须紧跟具体 .idx 路径，空跑会 exit=129）。
+        // pack Top N / LFS / worktrees 元数据 / reflog 各自占用由 DiskAnalyzer.Report 在文件系统侧扫描。
         public IList<GitCommand> BuildDiskAnalysis(AppSettings s)
         {
             var list = new List<GitCommand>();
             if (s == null || string.IsNullOrWhiteSpace(s.RepoPath)) return list;
             list.Add(new GitCommand("-C", s.RepoPath, "count-objects", "-v", "-H").CaptureAs("count_objects"));
-            list.Add(new GitCommand("-C", s.RepoPath, "verify-pack", "-v").CaptureAs("verify_pack"));
             return list;
         }
 
