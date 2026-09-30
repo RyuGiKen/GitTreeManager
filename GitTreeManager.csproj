@@ -56,6 +56,7 @@
     <Compile Include="Services\ConfigStore.cs" />
     <Compile Include="Services\GitLocator.cs" />
     <Compile Include="Services\DiskAnalyzer.cs" />
+    <Compile Include="Services\PathUtil.cs" />
     <Compile Include="Properties\AssemblyInfo.cs" />
   </ItemGroup>
   <ItemGroup>

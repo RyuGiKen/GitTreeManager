@@ -3,6 +3,27 @@ using GitTreeManager.Models;
 
 namespace GitTreeManager.Services
 {
+    /// <summary>终端命令行里的一段视觉 token；MainForm 按 Kind 上色。</summary>
+    public struct TermToken
+    {
+        public string Text;
+        public TermTokenKind Kind;
+        public TermToken(string text, TermTokenKind kind) { Text = text; Kind = kind; }
+    }
+
+    public enum TermTokenKind
+    {
+        Plain,      // 空格、无分类
+        Meta,       // [N/M] 序号前缀
+        Cmd,        // "git" 本体
+        Keyword,    // 子命令：config / worktree / add / init / clone / fsck / ...
+        Option,     // 选项：-C / -b / --local / --worktree / --prune=now / ...
+        Path,       // Windows 绝对路径
+        Constant,   // true / false
+        EnvVar,     // GIT_COMMITTER_NAME=...
+        Value       // 其他参数（值）
+    }
+
     /// <summary>
     /// 一条待执行的 git 调用。Args 不含 "git" 本身。
     /// 支持三种元信息（供 GitRunner 与 Display 使用）：
@@ -12,6 +33,16 @@ namespace GitTreeManager.Services
     /// </summary>
     public sealed class GitCommand
     {
+        private static readonly HashSet<string> Subcommands = new HashSet<string>
+        {
+            "init","clone","config","worktree","add","remove","prune","list",
+            "fsck","reflog","expire","gc","fetch","pull","push","remote","update",
+            "commit","amend","reset","checkout","switch","merge","rebase",
+            "show","log","status","diff","branch","tag","rev-parse","rev-list",
+            "count-objects","verify-pack","ls-files","ls-remote","symbolic-ref",
+            "submodule","stash","blame","bisect","cherry-pick","revert"
+        };
+
         public string[] Args { get; private set; }
         public string WorkingDirectory { get; set; }
         public Dictionary<string, string> Env { get; private set; }
@@ -54,6 +85,50 @@ namespace GitTreeManager.Services
                 }
                 return sb.ToString();
             }
+        }
+
+        /// <summary>拆成上色 token 序列；MainForm 的终端渲染器逐段贴色。</summary>
+        public IList<TermToken> Colorize(string prefix = null)
+        {
+            var list = new List<TermToken>();
+            if (!string.IsNullOrEmpty(prefix)) list.Add(new TermToken(prefix, TermTokenKind.Meta));
+            if (Env != null)
+            {
+                bool first = true;
+                foreach (var kv in Env)
+                {
+                    if (!first) list.Add(new TermToken(" ", TermTokenKind.Plain));
+                    list.Add(new TermToken(kv.Key + "=" + CommandLineEscaper.Escape(kv.Value), TermTokenKind.EnvVar));
+                    first = false;
+                }
+                if (!first) list.Add(new TermToken(" ", TermTokenKind.Plain));
+            }
+            list.Add(new TermToken("git", TermTokenKind.Cmd));
+            for (int i = 0; i < Args.Length; i++)
+            {
+                list.Add(new TermToken(" ", TermTokenKind.Plain));
+                string a = Args[i];
+                list.Add(new TermToken(CommandLineEscaper.Escape(a), Classify(a)));
+            }
+            return list;
+        }
+
+        private static TermTokenKind Classify(string arg)
+        {
+            if (string.IsNullOrEmpty(arg)) return TermTokenKind.Value;
+            if (arg == "true" || arg == "false") return TermTokenKind.Constant;
+            if (arg.Length >= 2 && arg[0] == '-') return TermTokenKind.Option;
+            if (IsWindowsPath(arg)) return TermTokenKind.Path;
+            if (Subcommands.Contains(arg)) return TermTokenKind.Keyword;
+            return TermTokenKind.Value;
+        }
+
+        private static bool IsWindowsPath(string s)
+        {
+            if (string.IsNullOrEmpty(s)) return false;
+            if (s.Length >= 3 && char.IsLetter(s[0]) && s[1] == ':' && (s[2] == '\\' || s[2] == '/')) return true;
+            if (s.StartsWith("\\\\")) return true;
+            return false;
         }
     }
 

@@ -302,7 +302,7 @@ namespace GitTreeManager
         private void DumpCmds(IList<GitCommand> cmds)
         {
             if (cmds == null || cmds.Count == 0) { LogMeta("(无命令)"); return; }
-            foreach (var c in cmds) LogCmd("$ " + c.Display);
+            for (int i = 0; i < cmds.Count; i++) WriteCommand(cmds[i], null, null);
         }
 
         private void btnExecute_Click(object sender, EventArgs e)
@@ -395,7 +395,7 @@ namespace GitTreeManager
             bool dry = chkDryRun.Checked;
             if (dry)
             {
-                for (int i = 0; i < cmds.Count; i++) LogCmd("[" + (i + 1) + "/" + cmds.Count + "] " + cmds[i].Display);
+                for (int i = 0; i < cmds.Count; i++) WriteCommand(cmds[i], i + 1, cmds.Count);
                 LogMeta("── Dry-run 未执行，共 " + cmds.Count + " 条 ──");
                 if (onAfterRun != null) onAfterRun();
                 return;
@@ -528,8 +528,6 @@ namespace GitTreeManager
                 string.Equals(text, "cls", StringComparison.OrdinalIgnoreCase))
             { rchTerm.Clear(); return; }
 
-            LogCmd(PromptText() + " " + text);
-
             var args = CommandLineParser.Split(text);
             if (args.Length == 0) return;
             // 允许用户输入 `git xxx` 或 `xxx`，都跑成 git xxx；首 token 若是 git 则剥掉。
@@ -537,6 +535,9 @@ namespace GitTreeManager
             if (string.Equals(args[0], "git", StringComparison.OrdinalIgnoreCase) && args.Length > 1) start = 1;
             var trimmed = new string[args.Length - start];
             Array.Copy(args, start, trimmed, 0, trimmed.Length);
+
+            // 回显：prompt + 上色后的完整 git 命令行 (与真实执行等价)
+            AppendTokens(new GitCommand(trimmed).Colorize(PromptText() + " "));
 
             var s = CollectSettingsFromUi();
             string wd = (!string.IsNullOrWhiteSpace(s.RepoPath) && Directory.Exists(s.RepoPath)) ? s.RepoPath : null;
@@ -624,7 +625,7 @@ namespace GitTreeManager
                 if (line.StartsWith("worktree "))
                 {
                     if (curPath != null) entries.Add(MkEntry(curPath, curBranch));
-                    curPath = line.Substring("worktree ".Length).Trim();
+                    curPath = PathUtil.ToNative(line.Substring("worktree ".Length).Trim());
                     curBranch = null;
                 }
                 else if (line.StartsWith("branch "))
@@ -742,17 +743,17 @@ namespace GitTreeManager
         {
             var s = new AppSettings
             {
-                RepoPath = txtRepoPath.Text.Trim(),
+                RepoPath = PathUtil.ToNative(txtRepoPath.Text.Trim()),
                 Mode = rbClone.Checked ? RepoMode.Clone : RepoMode.New,
                 RemoteUrl = txtRemoteUrl.Text.Trim(),
                 DefaultBranch = string.IsNullOrWhiteSpace(txtDefaultBranch.Text) ? "main" : txtDefaultBranch.Text.Trim(),
-                GitExe = string.IsNullOrWhiteSpace(txtGitExe.Text) ? "git" : txtGitExe.Text.Trim(),
+                GitExe = PathUtil.ToNative(string.IsNullOrWhiteSpace(txtGitExe.Text) ? "git" : txtGitExe.Text.Trim()),
                 DryRun = chkDryRun.Checked,
                 Entries = new List<WorktreeEntry>()
             };
             foreach (DataGridViewRow row in dgvWorktrees.Rows)
             {
-                string path = AsStr(row.Cells[colPath.Name].Value);
+                string path = PathUtil.ToNative(AsStr(row.Cells[colPath.Name].Value).Trim());
                 s.Entries.Add(new WorktreeEntry
                 {
                     IsMain = DetectIsMain(path),
@@ -784,6 +785,67 @@ namespace GitTreeManager
         // ---------- ITerminalSink ----------
 
         public void Write(string line, TermKind kind) { AppendTerm(line, kind); }
+
+        public void WriteCommand(GitCommand cmd, int? index, int? total)
+        {
+            if (rchTerm.InvokeRequired)
+            {
+                rchTerm.BeginInvoke(new Action<GitCommand, int?, int?>(WriteCommand), cmd, index, total);
+                return;
+            }
+            string prefix = (index.HasValue && total.HasValue) ? "[" + index.Value + "/" + total.Value + "] " : null;
+            AppendTokens(cmd.Colorize(prefix));
+        }
+
+        private static readonly Color TokCmd = Color.FromArgb(0, 0, 160);
+        private static readonly Color TokKeyword = Color.FromArgb(0, 90, 160);
+        private static readonly Color TokOption = Color.FromArgb(130, 0, 130);
+        private static readonly Color TokPath = Color.FromArgb(0, 100, 60);
+        private static readonly Color TokConstant = Color.FromArgb(150, 90, 0);
+        private static readonly Color TokEnvVar = Color.FromArgb(0, 100, 130);
+        private static readonly Color TokValue = Color.FromArgb(60, 60, 60);
+        private static readonly Color TokPlain = Color.FromArgb(30, 30, 30);
+
+        private void AppendTokens(IEnumerable<TermToken> tokens)
+        {
+            int start = rchTerm.TextLength;
+            var sb = new StringBuilder();
+            var spans = new List<Tuple<int, int, Color, bool>>();
+            int cur = start;
+            foreach (var t in tokens)
+            {
+                if (string.IsNullOrEmpty(t.Text)) continue;
+                int s = sb.Length;
+                sb.Append(t.Text);
+                spans.Add(Tuple.Create(cur + s, t.Text.Length, ColorForToken(t.Kind), t.Kind == TermTokenKind.Cmd));
+            }
+            sb.Append(Environment.NewLine);
+            rchTerm.AppendText(sb.ToString());
+            foreach (var sp in spans)
+            {
+                rchTerm.Select(sp.Item1, sp.Item2);
+                rchTerm.SelectionColor = sp.Item3;
+                rchTerm.SelectionFont = sp.Item4 ? new Font(rchTerm.Font, FontStyle.Bold) : rchTerm.Font;
+            }
+            rchTerm.Select(rchTerm.TextLength, 0);
+            rchTerm.ScrollToCaret();
+        }
+
+        private static Color ColorForToken(TermTokenKind k)
+        {
+            switch (k)
+            {
+                case TermTokenKind.Cmd: return TokCmd;
+                case TermTokenKind.Keyword: return TokKeyword;
+                case TermTokenKind.Option: return TokOption;
+                case TermTokenKind.Path: return TokPath;
+                case TermTokenKind.Constant: return TokConstant;
+                case TermTokenKind.EnvVar: return TokEnvVar;
+                case TermTokenKind.Value: return TokValue;
+                case TermTokenKind.Meta: return ColMeta;
+                default: return TokPlain;
+            }
+        }
 
         private void AppendTerm(string line, TermKind kind)
         {

@@ -30,6 +30,8 @@ namespace GitTreeManager.Services
     public interface ITerminalSink
     {
         void Write(string line, TermKind kind);
+        /// <summary>写一条 git 命令，UI 层按 token 上色；index/total 用于 [N/M] 前缀，null 表示不加。</summary>
+        void WriteCommand(GitCommand cmd, int? index, int? total);
     }
 
     /// <summary>
@@ -79,8 +81,7 @@ namespace GitTreeManager.Services
                 var raw = commands[i];
                 if (raw == null) continue;
                 var cmd = Expand(raw, vars);
-                string header = "[" + (i + 1) + "/" + commands.Count + "] " + cmd.Display;
-                if (sink != null) sink.Write(header, TermKind.Cmd);
+                if (sink != null) sink.WriteCommand(cmd, i + 1, commands.Count);
 
                 if (dryRun)
                 {
@@ -125,7 +126,7 @@ namespace GitTreeManager.Services
             _cancelRequested = false;
             if (string.IsNullOrWhiteSpace(gitExe)) gitExe = "git";
             var cmd = new GitCommand(args) { WorkingDirectory = workingDir };
-            if (sink != null) sink.Write(cmd.Display, TermKind.Cmd);
+            if (sink != null) sink.WriteCommand(cmd, null, null);
             string so, se;
             try
             {
