@@ -7,24 +7,61 @@ using System.Threading;
 
 namespace GitTreeManager.Services
 {
+    /// <summary>终端输出的语义类型，UI 层按类型上色。</summary>
+    public enum TermKind
+    {
+        /// <summary>提示符 / 环境头（灰）</summary>
+        Prompt,
+        /// <summary>用户/程序执行的命令本身（蓝）</summary>
+        Cmd,
+        /// <summary>stdout（默认前景）</summary>
+        Std,
+        /// <summary>stderr（红）</summary>
+        Err,
+        /// <summary>退出码 / 状态说明（暗灰）</summary>
+        Meta,
+        /// <summary>整批成功（绿）</summary>
+        Done,
+        /// <summary>整批失败 / 异常（红加粗）</summary>
+        Fail
+    }
+
+    /// <summary>终端输出接收器；UI 层实现这个接口把行写入 RichTextBox 并上色。</summary>
+    public interface ITerminalSink
+    {
+        void Write(string line, TermKind kind);
+    }
+
     /// <summary>
-    /// 顺序执行一批 GitCommand。
-    /// dryRun 模式仅把命令与简短提示写进日志，不启动进程。
-    /// 每条命令独立超时（默认 60s），失败即停。
-    /// 支持命令间数据流：CaptureStdoutAs 把 stdout Trim 后存入 vars，后续命令的 Args/Env 里 {key} 占位符自动展开。
+    /// 顺序执行一批 GitCommand。支持 dry-run / 超时 / 环境变量注入 / 跨命令 stdout 捕获 / 用户中断。
+    /// StopOnFirstFailure 默认 true（一行失败即中断全部）。
     /// </summary>
     public class GitRunner
     {
         private static readonly Regex Placeholder = new Regex(@"\{([a-zA-Z_][a-zA-Z0-9_]*)\}", RegexOptions.Compiled);
+        private volatile Process _current;
+        private volatile bool _cancelRequested;
 
         public int TimeoutMs { get; set; } = 60_000;
         public bool StopOnFirstFailure { get; set; } = true;
 
-        public bool RunAll(string gitExe, IList<GitCommand> commands, bool dryRun, Action<string> onLine)
+        /// <summary>请求中断当前正在运行的 git 子进程；对 dry-run / 空闲状态无副作用。</summary>
+        public void Cancel()
         {
+            _cancelRequested = true;
+            var p = _current;
+            if (p != null)
+            {
+                try { if (!p.HasExited) p.Kill(); } catch { }
+            }
+        }
+
+        public bool RunAll(string gitExe, IList<GitCommand> commands, bool dryRun, ITerminalSink sink)
+        {
+            _cancelRequested = false;
             if (commands == null || commands.Count == 0)
             {
-                if (onLine != null) onLine("[skip] 没有待执行的命令。");
+                if (sink != null) sink.Write("[skip] 没有待执行的命令。", TermKind.Meta);
                 return true;
             }
             if (string.IsNullOrWhiteSpace(gitExe)) gitExe = "git";
@@ -33,15 +70,21 @@ namespace GitTreeManager.Services
             bool allOk = true;
             for (int i = 0; i < commands.Count; i++)
             {
+                if (_cancelRequested)
+                {
+                    if (sink != null) sink.Write("—— 用户中断 ——", TermKind.Fail);
+                    allOk = false;
+                    break;
+                }
                 var raw = commands[i];
                 if (raw == null) continue;
                 var cmd = Expand(raw, vars);
                 string header = "[" + (i + 1) + "/" + commands.Count + "] " + cmd.Display;
-                if (onLine != null) onLine(header);
+                if (sink != null) sink.Write(header, TermKind.Cmd);
 
                 if (dryRun)
                 {
-                    if (onLine != null) onLine("    (dry-run: 未执行)");
+                    if (sink != null) sink.Write("    (dry-run: 未执行)", TermKind.Meta);
                     continue;
                 }
 
@@ -49,33 +92,52 @@ namespace GitTreeManager.Services
                 string stdOut, stdErr;
                 try
                 {
-                    exit = ExecuteOnce(gitExe, cmd, out stdOut, out stdErr);
+                    exit = ExecuteOnce(gitExe, cmd, sink, out stdOut, out stdErr);
                 }
                 catch (Exception ex)
                 {
-                    if (onLine != null) onLine("    !! 启动失败: " + ex.Message);
+                    if (sink != null) sink.Write("    !! 启动失败: " + ex.Message, TermKind.Err);
                     allOk = false;
                     if (StopOnFirstFailure) break;
                     continue;
                 }
-
-                if (onLine != null && !string.IsNullOrEmpty(stdOut)) EmitBlock(onLine, "    out> ", stdOut);
-                if (onLine != null && !string.IsNullOrEmpty(stdErr)) EmitBlock(onLine, "    err> ", stdErr);
-                if (onLine != null) onLine("    exit = " + exit);
 
                 if (!string.IsNullOrEmpty(cmd.CaptureStdoutAs))
                 {
                     vars[cmd.CaptureStdoutAs] = (stdOut ?? "").Trim();
                 }
 
-                if (exit != 0)
+                bool isErr = exit != 0;
+                if (sink != null) sink.Write("    exit = " + exit, isErr ? TermKind.Err : TermKind.Meta);
+                if (isErr)
                 {
                     allOk = false;
                     if (StopOnFirstFailure) break;
                 }
             }
-            if (onLine != null) onLine(allOk ? "—— 全部完成 ——" : "—— 因失败中断 ——");
+            if (sink != null) sink.Write(allOk ? "—— 全部完成 ——" : "—— 因失败中断 ——", allOk ? TermKind.Done : TermKind.Fail);
             return allOk;
+        }
+
+        /// <summary>交互式执行单条命令（用户直接输入，非批量流水线）。stdout/stderr 实时写终端。</summary>
+        public int RunInteractive(string gitExe, string[] args, string workingDir, ITerminalSink sink)
+        {
+            _cancelRequested = false;
+            if (string.IsNullOrWhiteSpace(gitExe)) gitExe = "git";
+            var cmd = new GitCommand(args) { WorkingDirectory = workingDir };
+            if (sink != null) sink.Write(cmd.Display, TermKind.Cmd);
+            string so, se;
+            try
+            {
+                int exit = ExecuteOnce(gitExe, cmd, sink, out so, out se);
+                if (sink != null) sink.Write("exit = " + exit, exit == 0 ? TermKind.Meta : TermKind.Err);
+                return exit;
+            }
+            catch (Exception ex)
+            {
+                if (sink != null) sink.Write("!! " + ex.Message, TermKind.Err);
+                return -1;
+            }
         }
 
         public string DetectGitVersion(string gitExe)
@@ -84,7 +146,7 @@ namespace GitTreeManager.Services
             {
                 string outp, errp;
                 ExecuteOnce(string.IsNullOrWhiteSpace(gitExe) ? "git" : gitExe,
-                    new GitCommand("--version"), out outp, out errp);
+                    new GitCommand("--version"), null, out outp, out errp);
                 if (!string.IsNullOrWhiteSpace(outp))
                 {
                     int nl = outp.IndexOfAny(new[] { '\r', '\n' });
@@ -95,7 +157,6 @@ namespace GitTreeManager.Services
             return null;
         }
 
-        /// <summary>把 vars 中的 key 展开到 Args 与 Env 的 {key} 占位符上。dry-run 时也调用，方便看到"如果真跑会长啥样"。</summary>
         private static GitCommand Expand(GitCommand src, Dictionary<string, string> vars)
         {
             var args = new string[src.Args.Length];
@@ -123,7 +184,7 @@ namespace GitTreeManager.Services
             });
         }
 
-        private int ExecuteOnce(string gitExe, GitCommand cmd, out string stdOut, out string stdErr)
+        private int ExecuteOnce(string gitExe, GitCommand cmd, ITerminalSink sink, out string stdOut, out string stdErr)
         {
             var psi = new ProcessStartInfo
             {
@@ -146,21 +207,33 @@ namespace GitTreeManager.Services
             var esb = new StringBuilder();
             using (var p = new Process { StartInfo = psi })
             {
-                p.OutputDataReceived += (s, e) => { if (e.Data != null) osb.AppendLine(e.Data); };
-                p.ErrorDataReceived += (s, e) => { if (e.Data != null) esb.AppendLine(e.Data); };
+                _current = p;
+                p.OutputDataReceived += (s, e) =>
+                {
+                    if (e.Data == null) return;
+                    osb.AppendLine(e.Data);
+                    if (sink != null) sink.Write("    " + e.Data, TermKind.Std);
+                };
+                p.ErrorDataReceived += (s, e) =>
+                {
+                    if (e.Data == null) return;
+                    esb.AppendLine(e.Data);
+                    if (sink != null) sink.Write("    " + e.Data, TermKind.Err);
+                };
                 p.Start();
                 p.BeginOutputReadLine();
                 p.BeginErrorReadLine();
-                if (!p.WaitForExit(TimeoutMs))
+                bool finished = p.WaitForExit(TimeoutMs);
+                if (!finished)
                 {
                     try { p.Kill(); } catch { }
+                    _current = null;
                     stdOut = osb.ToString();
                     stdErr = esb.ToString();
                     throw new TimeoutException("git 命令超时 " + TimeoutMs + " ms，已终止");
                 }
-                int spin = 0;
-                while (spin < 20 && osb.Length == 0 && esb.Length == 0 && !p.HasExited) { Thread.Sleep(10); spin++; }
                 int exit = p.ExitCode;
+                _current = null;
                 stdOut = osb.ToString();
                 stdErr = esb.ToString();
                 return exit;
@@ -173,16 +246,6 @@ namespace GitTreeManager.Services
             var parts = new string[args.Length];
             for (int i = 0; i < args.Length; i++) parts[i] = CommandLineEscaper.Escape(args[i]);
             return string.Join(" ", parts);
-        }
-
-        private static void EmitBlock(Action<string> onLine, string prefix, string text)
-        {
-            if (string.IsNullOrEmpty(text)) return;
-            foreach (var line in text.Replace("\r\n", "\n").Split('\n'))
-            {
-                if (line.Length == 0) continue;
-                onLine(prefix + line);
-            }
         }
     }
 }

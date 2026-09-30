@@ -48,12 +48,16 @@ namespace GitTreeManager
             this.btnPreview = new System.Windows.Forms.Button();
             this.btnExecute = new System.Windows.Forms.Button();
             this.tabLog = new System.Windows.Forms.TabPage();
-            this.pnlLogToolbar = new System.Windows.Forms.Panel();
-            this.btnLogCopy = new System.Windows.Forms.Button();
-            this.btnLogClear = new System.Windows.Forms.Button();
-            this.btnLogSaveBat = new System.Windows.Forms.Button();
-            this.btnLogSavePs1 = new System.Windows.Forms.Button();
-            this.txtLog = new System.Windows.Forms.RichTextBox();
+            this.pnlTermToolbar = new System.Windows.Forms.Panel();
+            this.btnTermClear = new System.Windows.Forms.Button();
+            this.btnTermCancel = new System.Windows.Forms.Button();
+            this.btnTermExportBat = new System.Windows.Forms.Button();
+            this.btnTermExportPs1 = new System.Windows.Forms.Button();
+            this.lblTermHint = new System.Windows.Forms.Label();
+            this.rchTerm = new System.Windows.Forms.RichTextBox();
+            this.pnlTermInput = new System.Windows.Forms.Panel();
+            this.lblPrompt = new System.Windows.Forms.Label();
+            this.txtTermInput = new System.Windows.Forms.TextBox();
             this.grpCommon = new System.Windows.Forms.GroupBox();
             this.btnCleanOrphan = new System.Windows.Forms.Button();
             this.btnCleanMerged = new System.Windows.Forms.Button();
@@ -77,7 +81,9 @@ namespace GitTreeManager
             ((System.ComponentModel.ISupportInitialize)(this.dgvWorktrees)).BeginInit();
             this.pnlWtBottom.SuspendLayout();
             this.tabLog.SuspendLayout();
-            this.pnlLogToolbar.SuspendLayout();
+            this.pnlTermToolbar.SuspendLayout();
+            this.rchTerm.SuspendLayout();
+            this.pnlTermInput.SuspendLayout();
             this.grpCommon.SuspendLayout();
             this.statusStrip.SuspendLayout();
             this.SuspendLayout();
@@ -259,7 +265,7 @@ namespace GitTreeManager
             this.tabWorktrees.Padding = new System.Windows.Forms.Padding(4);
             this.tabWorktrees.Size = new System.Drawing.Size(1088, 412);
             this.tabWorktrees.TabIndex = 0;
-            this.tabWorktrees.Text = "Worktree 列表";
+            this.tabWorktrees.Text = "Worktree";
             this.tabWorktrees.UseVisualStyleBackColor = true;
             //
             // pnlWtToolbar
@@ -453,84 +459,134 @@ namespace GitTreeManager
             this.btnExecute.UseVisualStyleBackColor = true;
             this.btnExecute.Click += new System.EventHandler(this.btnExecute_Click);
             //
-            // tabLog
+            // tabLog (终端)
             //
-            this.tabLog.Controls.Add(this.pnlLogToolbar);
-            this.tabLog.Controls.Add(this.txtLog);
+            this.tabLog.Controls.Add(this.pnlTermToolbar);
+            this.tabLog.Controls.Add(this.rchTerm);
+            this.tabLog.Controls.Add(this.pnlTermInput);
             this.tabLog.Location = new System.Drawing.Point(4, 22);
             this.tabLog.Name = "tabLog";
             this.tabLog.Padding = new System.Windows.Forms.Padding(4);
             this.tabLog.Size = new System.Drawing.Size(1088, 412);
             this.tabLog.TabIndex = 1;
-            this.tabLog.Text = "命令日志";
+            this.tabLog.Text = "终端";
             this.tabLog.UseVisualStyleBackColor = true;
             //
-            // pnlLogToolbar
+            // pnlTermToolbar
             //
-            this.pnlLogToolbar.Anchor = ((System.Windows.Forms.AnchorStyles)(((System.Windows.Forms.AnchorStyles.Top | System.Windows.Forms.AnchorStyles.Left)
+            this.pnlTermToolbar.Anchor = ((System.Windows.Forms.AnchorStyles)(((System.Windows.Forms.AnchorStyles.Top | System.Windows.Forms.AnchorStyles.Left)
             | System.Windows.Forms.AnchorStyles.Right)));
-            this.pnlLogToolbar.Controls.Add(this.btnLogCopy);
-            this.pnlLogToolbar.Controls.Add(this.btnLogClear);
-            this.pnlLogToolbar.Controls.Add(this.btnLogSaveBat);
-            this.pnlLogToolbar.Controls.Add(this.btnLogSavePs1);
-            this.pnlLogToolbar.Location = new System.Drawing.Point(4, 4);
-            this.pnlLogToolbar.Name = "pnlLogToolbar";
-            this.pnlLogToolbar.Size = new System.Drawing.Size(1080, 32);
-            this.pnlLogToolbar.TabIndex = 0;
+            this.pnlTermToolbar.Controls.Add(this.btnTermClear);
+            this.pnlTermToolbar.Controls.Add(this.btnTermCancel);
+            this.pnlTermToolbar.Controls.Add(this.btnTermExportBat);
+            this.pnlTermToolbar.Controls.Add(this.btnTermExportPs1);
+            this.pnlTermToolbar.Controls.Add(this.lblTermHint);
+            this.pnlTermToolbar.Location = new System.Drawing.Point(4, 4);
+            this.pnlTermToolbar.Name = "pnlTermToolbar";
+            this.pnlTermToolbar.Size = new System.Drawing.Size(1080, 32);
+            this.pnlTermToolbar.TabIndex = 0;
             //
-            // btnLogCopy
+            // btnTermClear
             //
-            this.btnLogCopy.Location = new System.Drawing.Point(6, 3);
-            this.btnLogCopy.Name = "btnLogCopy";
-            this.btnLogCopy.Size = new System.Drawing.Size(100, 26);
-            this.btnLogCopy.TabIndex = 0;
-            this.btnLogCopy.Text = "复制全部";
-            this.btnLogCopy.UseVisualStyleBackColor = true;
-            this.btnLogCopy.Click += new System.EventHandler(this.btnLogCopy_Click);
+            this.btnTermClear.Location = new System.Drawing.Point(6, 3);
+            this.btnTermClear.Name = "btnTermClear";
+            this.btnTermClear.Size = new System.Drawing.Size(90, 26);
+            this.btnTermClear.TabIndex = 0;
+            this.btnTermClear.Text = "清空";
+            this.btnTermClear.UseVisualStyleBackColor = true;
+            this.btnTermClear.Click += new System.EventHandler(this.btnTermClear_Click);
             //
-            // btnLogClear
+            // btnTermCancel
             //
-            this.btnLogClear.Location = new System.Drawing.Point(112, 3);
-            this.btnLogClear.Name = "btnLogClear";
-            this.btnLogClear.Size = new System.Drawing.Size(100, 26);
-            this.btnLogClear.TabIndex = 1;
-            this.btnLogClear.Text = "清空日志";
-            this.btnLogClear.UseVisualStyleBackColor = true;
-            this.btnLogClear.Click += new System.EventHandler(this.btnLogClear_Click);
+            this.btnTermCancel.Enabled = false;
+            this.btnTermCancel.Location = new System.Drawing.Point(102, 3);
+            this.btnTermCancel.Name = "btnTermCancel";
+            this.btnTermCancel.Size = new System.Drawing.Size(90, 26);
+            this.btnTermCancel.TabIndex = 1;
+            this.btnTermCancel.Text = "中断";
+            this.btnTermCancel.UseVisualStyleBackColor = true;
+            this.btnTermCancel.Click += new System.EventHandler(this.btnTermCancel_Click);
             //
-            // btnLogSaveBat
+            // btnTermExportBat
             //
-            this.btnLogSaveBat.Location = new System.Drawing.Point(218, 3);
-            this.btnLogSaveBat.Name = "btnLogSaveBat";
-            this.btnLogSaveBat.Size = new System.Drawing.Size(100, 26);
-            this.btnLogSaveBat.TabIndex = 2;
-            this.btnLogSaveBat.Text = "导出 .bat";
-            this.btnLogSaveBat.UseVisualStyleBackColor = true;
-            this.btnLogSaveBat.Click += new System.EventHandler(this.btnLogSaveBat_Click);
+            this.btnTermExportBat.Location = new System.Drawing.Point(198, 3);
+            this.btnTermExportBat.Name = "btnTermExportBat";
+            this.btnTermExportBat.Size = new System.Drawing.Size(100, 26);
+            this.btnTermExportBat.TabIndex = 2;
+            this.btnTermExportBat.Text = "导出 .bat";
+            this.btnTermExportBat.UseVisualStyleBackColor = true;
+            this.btnTermExportBat.Click += new System.EventHandler(this.btnTermExportBat_Click);
             //
-            // btnLogSavePs1
+            // btnTermExportPs1
             //
-            this.btnLogSavePs1.Location = new System.Drawing.Point(324, 3);
-            this.btnLogSavePs1.Name = "btnLogSavePs1";
-            this.btnLogSavePs1.Size = new System.Drawing.Size(100, 26);
-            this.btnLogSavePs1.TabIndex = 3;
-            this.btnLogSavePs1.Text = "导出 .ps1";
-            this.btnLogSavePs1.UseVisualStyleBackColor = true;
-            this.btnLogSavePs1.Click += new System.EventHandler(this.btnLogSavePs1_Click);
+            this.btnTermExportPs1.Location = new System.Drawing.Point(304, 3);
+            this.btnTermExportPs1.Name = "btnTermExportPs1";
+            this.btnTermExportPs1.Size = new System.Drawing.Size(100, 26);
+            this.btnTermExportPs1.TabIndex = 3;
+            this.btnTermExportPs1.Text = "导出 .ps1";
+            this.btnTermExportPs1.UseVisualStyleBackColor = true;
+            this.btnTermExportPs1.Click += new System.EventHandler(this.btnTermExportPs1_Click);
             //
-            // txtLog
+            // lblTermHint
             //
-            this.txtLog.Anchor = ((System.Windows.Forms.AnchorStyles)((((System.Windows.Forms.AnchorStyles.Top | System.Windows.Forms.AnchorStyles.Bottom)
+            this.lblTermHint.Anchor = ((System.Windows.Forms.AnchorStyles)((System.Windows.Forms.AnchorStyles.Top | System.Windows.Forms.AnchorStyles.Right)));
+            this.lblTermHint.AutoSize = true;
+            this.lblTermHint.ForeColor = System.Drawing.SystemColors.GrayText;
+            this.lblTermHint.Location = new System.Drawing.Point(760, 10);
+            this.lblTermHint.Name = "lblTermHint";
+            this.lblTermHint.Size = new System.Drawing.Size(0, 12);
+            this.lblTermHint.TabIndex = 4;
+            this.lblTermHint.Text = "Ctrl+C 中断 · ↑↓ 翻历史 · 输入自动加 git 前缀";
+            //
+            // rchTerm
+            //
+            this.rchTerm.Anchor = ((System.Windows.Forms.AnchorStyles)((((System.Windows.Forms.AnchorStyles.Top | System.Windows.Forms.AnchorStyles.Bottom)
             | System.Windows.Forms.AnchorStyles.Left)
             | System.Windows.Forms.AnchorStyles.Right)));
-            this.txtLog.BackColor = System.Drawing.SystemColors.Window;
-            this.txtLog.Font = new System.Drawing.Font("Consolas", 9F, System.Drawing.FontStyle.Regular, System.Drawing.GraphicsUnit.Point, ((byte)(0)));
-            this.txtLog.Location = new System.Drawing.Point(4, 40);
-            this.txtLog.Name = "txtLog";
-            this.txtLog.ReadOnly = true;
-            this.txtLog.Size = new System.Drawing.Size(1080, 366);
-            this.txtLog.TabIndex = 1;
-            this.txtLog.Text = "";
+            this.rchTerm.BackColor = System.Drawing.Color.White;
+            this.rchTerm.BorderStyle = System.Windows.Forms.BorderStyle.FixedSingle;
+            this.rchTerm.Font = new System.Drawing.Font("Consolas", 9.5F, System.Drawing.FontStyle.Regular, System.Drawing.GraphicsUnit.Point, ((byte)(0)));
+            this.rchTerm.HideSelection = false;
+            this.rchTerm.Location = new System.Drawing.Point(4, 40);
+            this.rchTerm.Name = "rchTerm";
+            this.rchTerm.ReadOnly = true;
+            this.rchTerm.Size = new System.Drawing.Size(1080, 328);
+            this.rchTerm.TabIndex = 1;
+            this.rchTerm.Text = "";
+            this.rchTerm.WordWrap = false;
+            //
+            // pnlTermInput
+            //
+            this.pnlTermInput.Anchor = ((System.Windows.Forms.AnchorStyles)(((System.Windows.Forms.AnchorStyles.Bottom | System.Windows.Forms.AnchorStyles.Left)
+            | System.Windows.Forms.AnchorStyles.Right)));
+            this.pnlTermInput.Controls.Add(this.lblPrompt);
+            this.pnlTermInput.Controls.Add(this.txtTermInput);
+            this.pnlTermInput.Location = new System.Drawing.Point(4, 372);
+            this.pnlTermInput.Name = "pnlTermInput";
+            this.pnlTermInput.Size = new System.Drawing.Size(1080, 30);
+            this.pnlTermInput.TabIndex = 2;
+            //
+            // lblPrompt
+            //
+            this.lblPrompt.AutoSize = true;
+            this.lblPrompt.Font = new System.Drawing.Font("Consolas", 9.5F, System.Drawing.FontStyle.Bold, System.Drawing.GraphicsUnit.Point, ((byte)(0)));
+            this.lblPrompt.ForeColor = System.Drawing.Color.DarkBlue;
+            this.lblPrompt.Location = new System.Drawing.Point(6, 7);
+            this.lblPrompt.Name = "lblPrompt";
+            this.lblPrompt.Size = new System.Drawing.Size(0, 17);
+            this.lblPrompt.TabIndex = 0;
+            this.lblPrompt.Text = "$";
+            //
+            // txtTermInput
+            //
+            this.txtTermInput.Anchor = ((System.Windows.Forms.AnchorStyles)(((System.Windows.Forms.AnchorStyles.Top | System.Windows.Forms.AnchorStyles.Left)
+            | System.Windows.Forms.AnchorStyles.Right)));
+            this.txtTermInput.Font = new System.Drawing.Font("Consolas", 9.5F, System.Drawing.FontStyle.Regular, System.Drawing.GraphicsUnit.Point, ((byte)(0)));
+            this.txtTermInput.Location = new System.Drawing.Point(24, 4);
+            this.txtTermInput.Name = "txtTermInput";
+            this.txtTermInput.Size = new System.Drawing.Size(1050, 22);
+            this.txtTermInput.TabIndex = 1;
+            this.txtTermInput.KeyDown += new System.Windows.Forms.KeyEventHandler(this.txtTermInput_KeyDown);
             //
             // grpCommon
             //
@@ -666,7 +722,11 @@ namespace GitTreeManager
             this.pnlWtBottom.ResumeLayout(false);
             this.pnlWtBottom.PerformLayout();
             this.tabLog.ResumeLayout(false);
-            this.pnlLogToolbar.ResumeLayout(false);
+            this.pnlTermToolbar.ResumeLayout(false);
+            this.pnlTermToolbar.PerformLayout();
+            this.rchTerm.ResumeLayout(false);
+            this.pnlTermInput.ResumeLayout(false);
+            this.pnlTermInput.PerformLayout();
             this.grpCommon.ResumeLayout(false);
             this.statusStrip.ResumeLayout(false);
             this.statusStrip.PerformLayout();
@@ -711,12 +771,16 @@ namespace GitTreeManager
         private System.Windows.Forms.Button btnPreview;
         private System.Windows.Forms.Button btnExecute;
         private System.Windows.Forms.TabPage tabLog;
-        private System.Windows.Forms.Panel pnlLogToolbar;
-        private System.Windows.Forms.Button btnLogCopy;
-        private System.Windows.Forms.Button btnLogClear;
-        private System.Windows.Forms.Button btnLogSaveBat;
-        private System.Windows.Forms.Button btnLogSavePs1;
-        private System.Windows.Forms.RichTextBox txtLog;
+        private System.Windows.Forms.Panel pnlTermToolbar;
+        private System.Windows.Forms.Button btnTermClear;
+        private System.Windows.Forms.Button btnTermCancel;
+        private System.Windows.Forms.Button btnTermExportBat;
+        private System.Windows.Forms.Button btnTermExportPs1;
+        private System.Windows.Forms.Label lblTermHint;
+        private System.Windows.Forms.RichTextBox rchTerm;
+        private System.Windows.Forms.Panel pnlTermInput;
+        private System.Windows.Forms.Label lblPrompt;
+        private System.Windows.Forms.TextBox txtTermInput;
         private System.Windows.Forms.GroupBox grpCommon;
         private System.Windows.Forms.Button btnCleanOrphan;
         private System.Windows.Forms.Button btnCleanMerged;

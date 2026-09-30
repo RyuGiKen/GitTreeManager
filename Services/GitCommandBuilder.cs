@@ -81,8 +81,11 @@ namespace GitTreeManager.Services
         }
 
         // ---------- Worktree 初始化主流程 ----------
-
-        public IList<GitCommand> BuildInitAndWorktrees(AppSettings s)
+        // branchExists 回调用于真跑前预检分支是否已存在：
+        //   存在 → `git worktree add <path> <branch>`（不加 -b）
+        //   不存在 → `git worktree add <path> -b <branch>`
+        // 不传回调按"不存在"处理（保持 dry-run 预览稳定）。
+        public IList<GitCommand> BuildInitAndWorktrees(AppSettings s, System.Func<string, bool> branchExists = null)
         {
             var list = new List<GitCommand>();
             if (s == null) return list;
@@ -104,8 +107,15 @@ namespace GitTreeManager.Services
             foreach (var en in s.Entries ?? new List<WorktreeEntry>())
             {
                 if (en == null || en.IsEmpty) continue;
-                list.Add(new GitCommand("-C", s.RepoPath, "worktree", "add",
-                    en.Path ?? "", "-b", en.Branch ?? ""));
+                bool exists = false;
+                if (branchExists != null && !string.IsNullOrWhiteSpace(en.Branch))
+                {
+                    try { exists = branchExists(en.Branch); } catch { exists = false; }
+                }
+                if (exists)
+                    list.Add(new GitCommand("-C", s.RepoPath, "worktree", "add", en.Path ?? "", en.Branch));
+                else
+                    list.Add(new GitCommand("-C", s.RepoPath, "worktree", "add", en.Path ?? "", "-b", en.Branch ?? ""));
                 if (!string.IsNullOrWhiteSpace(en.UserName))
                     list.Add(new GitCommand("-C", en.Path, "config", "--worktree", "user.name", en.UserName));
                 if (!string.IsNullOrWhiteSpace(en.UserEmail))

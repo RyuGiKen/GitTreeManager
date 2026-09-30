@@ -27,8 +27,8 @@ Tree/
 顶部 grpRepo：**左区**三行 = 仓库路径 + 模式单选 + 默认分支 + git.exe 路径；**右区**一列 3 个统一 116×25 按钮，与三行左内容顶对齐：Y=25 浏览仓库路径 / Y=57 创建·克隆（文字随 rbNew/rbClone 切换）/ Y=89 浏览 git.exe。git.exe 启动时按 `GIT_HOME → Program Files\Git\cmd → Program Files\Git\bin → Program Files (x86)\Git → %LOCALAPPDATA%\Programs\Git` 顺序自动探测，找不到回退 `git`。
 
 中间 TabControl 两页：
-1. **Worktree 列表**：DataGridView 最多 99 行，列 = `# / worktree 路径 / 分支 / user.name / user.email`；工具条按钮统一宽度（80/80/50/50/140/80，间距 6）；底部右侧"预览命令"与"执行"两按钮各 120×28 紧挨右锚；左下 Dry-run 复选框默认勾选。
-2. **命令日志**：RichTextBox 显示每条命令 `$ git ...` 与其 stdout/stderr；工具条 4 按钮统一 100 宽 6 间距；支持复制、清空、导出 `.bat` / `.ps1`。
+1. **Worktree**：DataGridView 最多 99 行，列 = `# / worktree 路径 / 分支 / user.name / user.email`；工具条按钮统一宽度（80/80/50/50/140/80，间距 6）；底部右侧"预览命令"与"执行"两按钮各 120×28 紧挨右锚；左下 Dry-run 复选框默认勾选。
+2. **终端**：只读 RichTextBox + 底部 `$` prompt + 输入行；彩色分级（命令蓝 / stdout 黑 / stderr 红 / meta 灰 / 完成绿 / 失败红加粗）；支持 `git ...` 或裸子命令自动加 git 前缀；↑↓ 翻历史；Ctrl+C 或"中断"按钮 Kill 当前 git 子进程；工具条：清空 / 中断 / 导出 .bat / 导出 .ps1。
 
 底部 grpCommon：一行 5 个 200×30 按钮，间距 18，全行刚好铺满 grpCommon 内部宽度。
 
