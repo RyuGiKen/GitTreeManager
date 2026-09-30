@@ -237,25 +237,35 @@ namespace GitTreeManager
                 LogMeta("[skip] 仓库路径不存在，无法读取 worktree 列表。");
                 return;
             }
+            var listCmd = new GitCommand("-C", s.RepoPath, "worktree", "list", "--porcelain");
+            WriteCommand(listCmd, null, null);
             string stdOut, stdErr;
             try
             {
-                int exit = RunCapture(s.GitExe,
-                    new GitCommand("-C", s.RepoPath, "worktree", "list", "--porcelain"),
-                    out stdOut, out stdErr);
+                int exit = RunCapture(s.GitExe, listCmd, out stdOut, out stdErr);
                 if (exit != 0)
                 {
-                    LogErr("读取 worktree 失败 (exit " + exit + "): " + stdErr);
+                    LogErr("    → 失败 exit=" + exit + "  " + (stdErr ?? "").Trim());
                     return;
                 }
+                LogMeta("    → " + CountPorcelainBlocks(stdOut) + " 块");
                 int n = LoadWorktreesFromPorcelain(s.GitExe, stdOut);
-                LogMeta("已回填 " + n + " 条 worktree（首行标为主仓库；user.name/email 已按 --local / --worktree 分别拉取）。");
+                LogMeta("已回填 " + n + " 条 worktree（每行 `.git` 目录/文件自动判主仓库；user.name/email 按 --local / --worktree 分别拉）。");
                 UpdatePrompt();
             }
             catch (Exception ex)
             {
                 LogErr("读取 worktree 异常: " + ex.Message);
             }
+        }
+
+        private static int CountPorcelainBlocks(string output)
+        {
+            if (string.IsNullOrEmpty(output)) return 0;
+            int n = 0;
+            foreach (var l in output.Replace("\r\n", "\n").Split('\n'))
+                if (l.StartsWith("worktree ")) n++;
+            return n;
         }
 
         private void btnWtClear_Click(object sender, EventArgs e)
@@ -328,6 +338,7 @@ namespace GitTreeManager
 
         /// <summary>
         /// 返回一个分支存在性探针；仓库目录不存在时（首次 init）返回 null 让 builder 一律按 -b 生成。
+        /// 每次探测都是一条真跑的 `git branch --list <b>` 指令，同步写到终端里以便观察。
         /// </summary>
         private System.Func<string, bool> MakeBranchProbe(AppSettings s)
         {
@@ -335,11 +346,13 @@ namespace GitTreeManager
             return branch =>
             {
                 if (string.IsNullOrWhiteSpace(branch)) return false;
+                var cmd = new GitCommand("-C", s.RepoPath, "branch", "--list", branch, "--format=%(refname:short)");
+                WriteCommand(cmd, null, null);
                 string so, se;
-                int exit = RunCapture(s.GitExe,
-                    new GitCommand("-C", s.RepoPath, "branch", "--list", branch, "--format=%(refname:short)"),
-                    out so, out se);
-                return exit == 0 && !string.IsNullOrWhiteSpace(so);
+                int exit = RunCapture(s.GitExe, cmd, out so, out se);
+                bool has = exit == 0 && !string.IsNullOrWhiteSpace(so);
+                LogMeta("    → " + (has ? so.Trim() + " (已存在，不加 -b)" : "(不存在，用 -b 新建)"));
+                return has;
             };
         }
 
@@ -661,22 +674,28 @@ namespace GitTreeManager
                 string path = AsStr(row.Cells[colPath.Name].Value).Trim();
                 bool isMain = DetectIsMain(path);
                 string scope = isMain ? "--local" : "--worktree";
-                row.Cells[colName.Name].Value = ReadConfig(gitExe, path, scope, "user.name");
-                row.Cells[colEmail.Name].Value = ReadConfig(gitExe, path, scope, "user.email");
+                row.Cells[colName.Name].Value = ReadConfig(gitExe, path, scope, "user.name", true);
+                row.Cells[colEmail.Name].Value = ReadConfig(gitExe, path, scope, "user.email", true);
             }
             return entries.Count;
         }
 
-        private string ReadConfig(string gitExe, string workDir, string scopeFlag, string key)
+        private string ReadConfig(string gitExe, string workDir, string scopeFlag, string key, bool log = false)
         {
             if (string.IsNullOrWhiteSpace(workDir)) return "";
             try
             {
+                var cmd = new GitCommand("-C", workDir, "config", scopeFlag, key);
+                if (log) WriteCommand(cmd, null, null);
                 string so, se;
-                int exit = RunCapture(gitExe,
-                    new GitCommand("-C", workDir, "config", scopeFlag, key),
-                    out so, out se);
-                return exit == 0 ? (so ?? "").Trim() : "";
+                int exit = RunCapture(gitExe, cmd, out so, out se);
+                string v = exit == 0 ? (so ?? "").Trim() : "";
+                if (log)
+                {
+                    if (exit != 0) LogErr("    → 失败 exit=" + exit);
+                    else LogMeta("    → " + (string.IsNullOrEmpty(v) ? "(空)" : v));
+                }
+                return v;
             }
             catch { return ""; }
         }
