@@ -59,6 +59,7 @@ namespace GitTreeManager
             RefreshGitVersion();
             UpdateRowLabel();
             UpdatePrompt();
+            pnlTermInput.Resize += (s, ev) => LayoutInputRow();
             // 类型列由 Path 下的 .git 是目录还是文件自动判定；用户改 Path 或 RepoPath 时刷新
             dgvWorktrees.CellValueChanged += DgvWt_CellValueChanged;
             txtRepoPath.TextChanged += (s, ev) => RefreshAllRowTypes();
@@ -586,6 +587,21 @@ namespace GitTreeManager
         private void UpdatePrompt()
         {
             lblPrompt.Text = PromptText();
+            LayoutInputRow();
+        }
+
+        /// <summary>
+        /// lblPrompt AutoSize + 只 Top anchor：手动摆输入框的位置，
+        /// 保证 prompt 变长 (如 `$ Test_Main (feature/very-long-name)`) 也不会盖住输入。
+        /// </summary>
+        private void LayoutInputRow()
+        {
+            if (lblPrompt == null || txtTermInput == null || pnlTermInput == null) return;
+            lblPrompt.PerformLayout();
+            int right = lblPrompt.Right + 4;
+            int width = pnlTermInput.ClientSize.Width - right - 6;
+            if (width < 120) width = 120;
+            txtTermInput.SetBounds(right, 4, width, txtTermInput.Height);
         }
 
         private int RunCapture(string gitExe, GitCommand cmd, out string stdout, out string stderr)
