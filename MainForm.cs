@@ -59,55 +59,53 @@ namespace GitTreeManager
             RefreshGitVersion();
             UpdateRowLabel();
             UpdatePrompt();
-            // 勾选框立即 commit（默认要焦点离开才 commit）+ 主仓库行互斥 + 高亮
-            dgvWorktrees.CurrentCellDirtyStateChanged += DgvWt_CurrentCellDirtyStateChanged;
+            // 类型列由 Path 下的 .git 是目录还是文件自动判定；用户改 Path 或 RepoPath 时刷新
             dgvWorktrees.CellValueChanged += DgvWt_CellValueChanged;
-            RefreshMainHighlight();
+            txtRepoPath.TextChanged += (s, ev) => RefreshAllRowTypes();
+            RefreshAllRowTypes();
             LogMeta("GitTreeManager 终端 · 输入 git 命令直接回车执行 · ↑↓ 翻历史 · Ctrl+C 中断当前命令");
         }
 
-        private bool _updatingMainFlag;
-        private void DgvWt_CurrentCellDirtyStateChanged(object sender, EventArgs e)
+        /// <summary>
+        /// 判定规则：
+        ///   &lt;path&gt;\.git 是目录 → 主仓库
+        ///   &lt;path&gt;\.git 是文件（内含 gitdir: 指针）→ 已存在的 worktree
+        ///   &lt;path&gt;\.git 不存在（含路径为空 / 路径不存在）→ 视作待创建的 worktree
+        /// </summary>
+        private static bool DetectIsMain(string path)
         {
-            if (dgvWorktrees.IsCurrentCellDirty &&
-                dgvWorktrees.CurrentCell is DataGridViewCheckBoxCell)
+            if (string.IsNullOrWhiteSpace(path)) return false;
+            try
             {
-                dgvWorktrees.CommitEdit(DataGridViewDataErrorContexts.Commit);
+                string gitPath = Path.Combine(path.Trim(), ".git");
+                return Directory.Exists(gitPath);
             }
+            catch { return false; }
+        }
+
+        private void RefreshRowType(DataGridViewRow row)
+        {
+            if (row == null) return;
+            string path = AsStr(row.Cells[colPath.Name].Value).Trim();
+            bool isMain = DetectIsMain(path);
+            row.Cells[colType.Name].Value = isMain ? "主仓库" : "worktree";
+            row.DefaultCellStyle.BackColor = isMain
+                ? Color.FromArgb(0xE6, 0xF2, 0xFF)
+                : SystemColors.Window;
+        }
+
+        private void RefreshAllRowTypes()
+        {
+            foreach (DataGridViewRow r in dgvWorktrees.Rows) RefreshRowType(r);
         }
 
         private void DgvWt_CellValueChanged(object sender, DataGridViewCellEventArgs e)
         {
-            if (_updatingMainFlag) return;
             if (e.RowIndex < 0 || e.ColumnIndex < 0) return;
-            if (dgvWorktrees.Columns[e.ColumnIndex].Name != colMain.Name) return;
-            var row = dgvWorktrees.Rows[e.RowIndex];
-            bool val = row.Cells[e.ColumnIndex].Value as bool? ?? false;
-            if (val)
+            // 只关心路径列变化；重命名/换 repo 通过 TextChanged 分支处理
+            if (dgvWorktrees.Columns[e.ColumnIndex].Name == colPath.Name)
             {
-                _updatingMainFlag = true;
-                try
-                {
-                    foreach (DataGridViewRow r in dgvWorktrees.Rows)
-                    {
-                        if (r == row) continue;
-                        if (r.Cells[colMain.Name].Value as bool? == true)
-                            r.Cells[colMain.Name].Value = false;
-                    }
-                }
-                finally { _updatingMainFlag = false; }
-            }
-            RefreshMainHighlight();
-        }
-
-        private void RefreshMainHighlight()
-        {
-            foreach (DataGridViewRow r in dgvWorktrees.Rows)
-            {
-                bool isMain = r.Cells[colMain.Name].Value as bool? ?? false;
-                r.DefaultCellStyle.BackColor = isMain
-                    ? Color.FromArgb(0xE6, 0xF2, 0xFF)
-                    : SystemColors.Window;
+                RefreshRowType(dgvWorktrees.Rows[e.RowIndex]);
             }
         }
 
@@ -194,6 +192,7 @@ namespace GitTreeManager
             }
             int idx = dgvWorktrees.Rows.Add();
             dgvWorktrees.Rows[idx].Cells[colNum.Name].Value = idx + 1;
+            RefreshRowType(dgvWorktrees.Rows[idx]);
             UpdateRowLabel();
         }
 
@@ -204,6 +203,7 @@ namespace GitTreeManager
             if (i < 0 || i >= dgvWorktrees.Rows.Count) return;
             dgvWorktrees.Rows.RemoveAt(i);
             RenumberRows();
+            RefreshAllRowTypes();
             UpdateRowLabel();
         }
 
@@ -214,6 +214,7 @@ namespace GitTreeManager
             if (i <= 0) return;
             SwapRows(i, i - 1);
             dgvWorktrees.Rows[i - 1].Selected = true;
+            RefreshAllRowTypes();
             UpdateRowLabel();
         }
 
@@ -224,6 +225,7 @@ namespace GitTreeManager
             if (i >= dgvWorktrees.Rows.Count - 1) return;
             SwapRows(i, i + 1);
             dgvWorktrees.Rows[i + 1].Selected = true;
+            RefreshAllRowTypes();
             UpdateRowLabel();
         }
 
@@ -637,21 +639,12 @@ namespace GitTreeManager
                 }
             }
             if (curPath != null) entries.Add(MkEntry(curPath, curBranch));
-            if (entries.Count > 0) entries[0].IsMain = true; // porcelain 首块 = 主仓库
-            // 逐行读 user.name/email：主仓库用 --local、worktree 用 --worktree
-            foreach (var en in entries)
-            {
-                string scope = en.IsMain ? "--local" : "--worktree";
-                en.UserName = ReadConfig(gitExe, en.Path, scope, "user.name");
-                en.UserEmail = ReadConfig(gitExe, en.Path, scope, "user.email");
-            }
             foreach (var en in entries)
             {
                 if (dgvWorktrees.Rows.Count >= MaxRows) break;
                 int idx = dgvWorktrees.Rows.Add();
                 var row = dgvWorktrees.Rows[idx];
                 row.Cells[colNum.Name].Value = idx + 1;
-                row.Cells[colMain.Name].Value = en.IsMain;
                 row.Cells[colPath.Name].Value = en.Path;
                 row.Cells[colBranch.Name].Value = en.Branch;
                 row.Cells[colName.Name].Value = en.UserName;
@@ -659,7 +652,17 @@ namespace GitTreeManager
             }
             RenumberRows();
             UpdateRowLabel();
-            RefreshMainHighlight();
+            // 类型列 & 主仓库标记从 Path/.git 是目录还是文件自动推导
+            RefreshAllRowTypes();
+            // 逐行按最终 IsMain 状态再拉一次 scope 正确的 user.name/email
+            foreach (DataGridViewRow row in dgvWorktrees.Rows)
+            {
+                string path = AsStr(row.Cells[colPath.Name].Value).Trim();
+                bool isMain = DetectIsMain(path);
+                string scope = isMain ? "--local" : "--worktree";
+                row.Cells[colName.Name].Value = ReadConfig(gitExe, path, scope, "user.name");
+                row.Cells[colEmail.Name].Value = ReadConfig(gitExe, path, scope, "user.email");
+            }
             return entries.Count;
         }
 
@@ -726,14 +729,13 @@ namespace GitTreeManager
                     int idx = dgvWorktrees.Rows.Add();
                     var row = dgvWorktrees.Rows[idx];
                     row.Cells[colNum.Name].Value = idx + 1;
-                    row.Cells[colMain.Name].Value = en.IsMain;
                     row.Cells[colPath.Name].Value = en.Path;
                     row.Cells[colBranch.Name].Value = en.Branch;
                     row.Cells[colName.Name].Value = en.UserName;
                     row.Cells[colEmail.Name].Value = en.UserEmail;
                 }
             }
-            RefreshMainHighlight();
+            RefreshAllRowTypes();
         }
 
         private AppSettings CollectSettingsFromUi()
@@ -750,10 +752,11 @@ namespace GitTreeManager
             };
             foreach (DataGridViewRow row in dgvWorktrees.Rows)
             {
+                string path = AsStr(row.Cells[colPath.Name].Value);
                 s.Entries.Add(new WorktreeEntry
                 {
-                    IsMain = (row.Cells[colMain.Name].Value as bool?) ?? false,
-                    Path = AsStr(row.Cells[colPath.Name].Value),
+                    IsMain = DetectIsMain(path),
+                    Path = path,
                     Branch = AsStr(row.Cells[colBranch.Name].Value),
                     UserName = AsStr(row.Cells[colName.Name].Value),
                     UserEmail = AsStr(row.Cells[colEmail.Name].Value)

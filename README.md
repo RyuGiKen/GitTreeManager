@@ -27,7 +27,7 @@ Tree/
 顶部 grpRepo：**左区**三行 = 仓库路径 + 模式单选 + 默认分支 + git.exe 路径；**右区**一列 3 个统一 116×25 按钮，与三行左内容顶对齐：Y=25 浏览仓库路径 / Y=57 创建·克隆（文字随 rbNew/rbClone 切换）/ Y=89 浏览 git.exe。git.exe 启动时按 `GIT_HOME → Program Files\Git\cmd → Program Files\Git\bin → Program Files (x86)\Git → %LOCALAPPDATA%\Programs\Git` 顺序自动探测，找不到回退 `git`。
 
 中间 TabControl 两页：
-1. **Worktree**：DataGridView 最多 99 行，列 = `# / 主仓库(勾选) / worktree 路径 / 分支 / user.name / user.email`；勾选"主仓库"的行淡蓝背景高亮，且行内互斥（同时只能有一行是主仓库）。工具条按钮统一宽度；底部右锚只有"执行"。
+1. **Worktree**：DataGridView 最多 99 行，列 = `# / 类型 / worktree 路径 / 分支 / user.name / user.email`；"类型"列只读，值由 `<路径>\.git` 是**目录还是文件**自动推导 —— `.git` 目录 = 主仓库（淡蓝背景），`.git` 文件（内含 `gitdir: ...` 指针）= 已存在的 worktree，`.git` 缺失（路径不存在或还没建）= 视作待创建 worktree。用户不需要也无法手动指定。工具条按钮统一宽度；底部右锚只有"执行"。
 2. **终端**：只读 RichTextBox + 底部 `$` prompt + 输入行；彩色分级（命令蓝 / stdout 黑 / stderr 红 / meta 灰 / 完成绿 / 失败红加粗）；支持 `git ...` 或裸子命令自动加 git 前缀；↑↓ 翻历史；Ctrl+C 或"中断"按钮 Kill 当前 git 子进程；工具条：清空 / 中断 / 导出 .bat / 导出 .ps1。
 
 底部 grpCommon：一行 5 个 200×30 按钮，间距 18，全行刚好铺满 grpCommon 内部宽度。
@@ -43,15 +43,15 @@ Tree/
 
 2. **Worktree 级** —— Worktree tab 底部"执行"按钮 → `BuildWorktreeApply`：
    - 幂等前置：`git -C <RepoPath> config extensions.worktreeConfig true`
-   - 每行分两种：
-     - **主仓库行**（IsMain=true，淡蓝高亮）：不 `worktree add`；`git -C <path> config --local user.name <x>`（`--local` 前缀，不带 `--worktree`）
-     - **worktree 行**：`git -C <RepoPath> worktree add <path> [-b] <branch>` → `git -C <path> config --worktree user.name <x>` → 同 email
-   - 若主仓库不存在（`.git` 目录缺失），"执行"直接弹提示让用户先点"创建/克隆"
+   - 每行的类型自动从 `<path>\.git` 判定：
+     - **主仓库**（`.git` 是目录）：不 `worktree add`；`git -C <path> config --local user.name <x>`（`--local` 前缀，不带 `--worktree`）
+     - **worktree**（`.git` 是文件 或 缺失）：`git -C <RepoPath> worktree add <path> [-b] <branch>` → `git -C <path> config --worktree user.name <x>` → 同 email
+   - 若主仓库不存在（`<RepoPath>\.git` 目录缺失），"执行"直接弹提示让用户先点"创建/克隆"
    - 分支存在性探针：`git branch --list <b> --format=%(refname:short)` 非空 → 不加 `-b`（实测否则 fatal 分支已存在）
 
 **读取现有 worktree** —— Worktree tab 工具条按钮：
-- `git worktree list --porcelain` 首块视为主仓库（IsMain=true），后续块为 linked worktrees
-- 主仓库读 `--local user.name/email`；worktree 读 `--worktree user.name/email`（未覆盖时可能为空，符合预期）
+- `git worktree list --porcelain` 解析路径+分支，行类型自动从 `.git` 判定
+- 主仓库行读 `--local user.name/email`；worktree 行读 `--worktree user.name/email`（未覆盖时可能为空，符合预期）
 
 ## 常用功能按钮
 
