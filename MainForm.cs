@@ -218,11 +218,39 @@ namespace GitTreeManager
 
         // ---------- 执行 / 预览 ----------
 
+        /// <summary>
+        /// 全局预览：一次性把 Worktree 流水线 + 5 个常用功能的命令序列都打到终端页；
+        /// 分支存在探针会真跑一次以决定要不要 -b，命令本身不执行。
+        /// </summary>
         private void btnPreview_Click(object sender, EventArgs e)
         {
             var s = CollectSettingsFromUi();
-            var cmds = _builder.BuildInitAndWorktrees(s, MakeBranchProbe(s));
-            LogMeta("── 预览 " + cmds.Count + " 条命令 ──");
+            var probe = MakeBranchProbe(s);
+
+            LogMeta("═══ Worktree 流水线 ═══");
+            DumpCmds(_builder.BuildInitAndWorktrees(s, probe));
+
+            LogMeta("═══ 清理多余提交和引用记录 ═══");
+            DumpCmds(_builder.BuildCleanOrphanCommits(s));
+
+            LogMeta("═══ 清理已合并分支（扫描阶段） ═══");
+            DumpCmds(_builder.BuildCleanMergedBranches(s));
+
+            LogMeta("═══ 更新远端 ═══");
+            DumpCmds(_builder.BuildUpdateAllRemotes(s));
+
+            LogMeta("═══ 仓库磁盘分析 ═══");
+            DumpCmds(_builder.BuildDiskAnalysis(s));
+
+            LogMeta("═══ 对齐最新提交 ═══");
+            DumpCmds(_builder.BuildAlignLatestCommit(s));
+
+            LogMeta("═══ 预览结束 ═══");
+        }
+
+        private void DumpCmds(IList<GitCommand> cmds)
+        {
+            if (cmds == null || cmds.Count == 0) { LogMeta("(无命令)"); return; }
             foreach (var c in cmds) LogCmd("$ " + c.Display);
         }
 

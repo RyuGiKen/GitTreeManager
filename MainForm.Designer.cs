@@ -74,6 +74,8 @@ namespace GitTreeManager
             this.lblGitExe = new System.Windows.Forms.Label();
             this.txtGitExe = new System.Windows.Forms.TextBox();
             this.btnInitRepo = new System.Windows.Forms.Button();
+            this.pnlGlobal = new System.Windows.Forms.Panel();
+            this.lblGlobalScope = new System.Windows.Forms.Label();
             this.grpRepo.SuspendLayout();
             this.tabs.SuspendLayout();
             this.tabWorktrees.SuspendLayout();
@@ -85,6 +87,7 @@ namespace GitTreeManager
             this.rchTerm.SuspendLayout();
             this.pnlTermInput.SuspendLayout();
             this.grpCommon.SuspendLayout();
+            this.pnlGlobal.SuspendLayout();
             this.statusStrip.SuspendLayout();
             this.SuspendLayout();
             //
@@ -252,7 +255,7 @@ namespace GitTreeManager
             this.tabs.Location = new System.Drawing.Point(12, 156);
             this.tabs.Name = "tabs";
             this.tabs.SelectedIndex = 0;
-            this.tabs.Size = new System.Drawing.Size(1096, 474);
+            this.tabs.Size = new System.Drawing.Size(1096, 440);
             this.tabs.TabIndex = 1;
             //
             // tabWorktrees
@@ -417,8 +420,6 @@ namespace GitTreeManager
             //
             this.pnlWtBottom.Anchor = ((System.Windows.Forms.AnchorStyles)(((System.Windows.Forms.AnchorStyles.Bottom | System.Windows.Forms.AnchorStyles.Left)
             | System.Windows.Forms.AnchorStyles.Right)));
-            this.pnlWtBottom.Controls.Add(this.chkDryRun);
-            this.pnlWtBottom.Controls.Add(this.btnPreview);
             this.pnlWtBottom.Controls.Add(this.btnExecute);
             this.pnlWtBottom.Location = new System.Drawing.Point(4, 360);
             this.pnlWtBottom.Name = "pnlWtBottom";
@@ -430,21 +431,21 @@ namespace GitTreeManager
             this.chkDryRun.AutoSize = true;
             this.chkDryRun.Checked = true;
             this.chkDryRun.CheckState = System.Windows.Forms.CheckState.Checked;
-            this.chkDryRun.Location = new System.Drawing.Point(6, 15);
+            this.chkDryRun.Location = new System.Drawing.Point(8, 6);
             this.chkDryRun.Name = "chkDryRun";
             this.chkDryRun.Size = new System.Drawing.Size(227, 16);
             this.chkDryRun.TabIndex = 0;
-            this.chkDryRun.Text = "Dry-run（仅预览命令，不实际执行）";
+            this.chkDryRun.Text = "Dry-run（全局：勾选后所有操作只打印命令、不执行）";
             this.chkDryRun.UseVisualStyleBackColor = true;
             //
             // btnPreview
             //
             this.btnPreview.Anchor = ((System.Windows.Forms.AnchorStyles)((System.Windows.Forms.AnchorStyles.Top | System.Windows.Forms.AnchorStyles.Right)));
-            this.btnPreview.Location = new System.Drawing.Point(828, 10);
+            this.btnPreview.Location = new System.Drawing.Point(970, 2);
             this.btnPreview.Name = "btnPreview";
-            this.btnPreview.Size = new System.Drawing.Size(120, 28);
-            this.btnPreview.TabIndex = 1;
-            this.btnPreview.Text = "预览命令";
+            this.btnPreview.Size = new System.Drawing.Size(120, 25);
+            this.btnPreview.TabIndex = 2;
+            this.btnPreview.Text = "预览全部命令";
             this.btnPreview.UseVisualStyleBackColor = true;
             this.btnPreview.Click += new System.EventHandler(this.btnPreview_Click);
             //
@@ -655,6 +656,30 @@ namespace GitTreeManager
             this.btnAlignCommit.UseVisualStyleBackColor = true;
             this.btnAlignCommit.Click += new System.EventHandler(this.btnAlignCommit_Click);
             //
+            // pnlGlobal
+            //
+            this.pnlGlobal.Anchor = ((System.Windows.Forms.AnchorStyles)(((System.Windows.Forms.AnchorStyles.Bottom | System.Windows.Forms.AnchorStyles.Left)
+            | System.Windows.Forms.AnchorStyles.Right)));
+            this.pnlGlobal.BorderStyle = System.Windows.Forms.BorderStyle.FixedSingle;
+            this.pnlGlobal.Controls.Add(this.chkDryRun);
+            this.pnlGlobal.Controls.Add(this.btnPreview);
+            this.pnlGlobal.Controls.Add(this.lblGlobalScope);
+            this.pnlGlobal.Location = new System.Drawing.Point(12, 602);
+            this.pnlGlobal.Name = "pnlGlobal";
+            this.pnlGlobal.Size = new System.Drawing.Size(1096, 28);
+            this.pnlGlobal.TabIndex = 4;
+            //
+            // lblGlobalScope
+            //
+            this.lblGlobalScope.Anchor = ((System.Windows.Forms.AnchorStyles)((System.Windows.Forms.AnchorStyles.Top | System.Windows.Forms.AnchorStyles.Right)));
+            this.lblGlobalScope.AutoSize = true;
+            this.lblGlobalScope.ForeColor = System.Drawing.SystemColors.GrayText;
+            this.lblGlobalScope.Location = new System.Drawing.Point(680, 7);
+            this.lblGlobalScope.Name = "lblGlobalScope";
+            this.lblGlobalScope.Size = new System.Drawing.Size(0, 12);
+            this.lblGlobalScope.TabIndex = 3;
+            this.lblGlobalScope.Text = "影响 Worktree 执行 · 创建/克隆 · 5 个常用功能";
+            //
             // statusStrip
             //
             this.statusStrip.Items.AddRange(new System.Windows.Forms.ToolStripItem[] {
@@ -705,6 +730,7 @@ namespace GitTreeManager
             this.ClientSize = new System.Drawing.Size(1120, 721);
             this.Controls.Add(this.grpRepo);
             this.Controls.Add(this.tabs);
+            this.Controls.Add(this.pnlGlobal);
             this.Controls.Add(this.grpCommon);
             this.Controls.Add(this.statusStrip);
             this.MinimumSize = new System.Drawing.Size(920, 640);
@@ -728,6 +754,8 @@ namespace GitTreeManager
             this.pnlTermInput.ResumeLayout(false);
             this.pnlTermInput.PerformLayout();
             this.grpCommon.ResumeLayout(false);
+            this.pnlGlobal.ResumeLayout(false);
+            this.pnlGlobal.PerformLayout();
             this.statusStrip.ResumeLayout(false);
             this.statusStrip.PerformLayout();
             this.ResumeLayout(false);
@@ -782,6 +810,8 @@ namespace GitTreeManager
         private System.Windows.Forms.Label lblPrompt;
         private System.Windows.Forms.TextBox txtTermInput;
         private System.Windows.Forms.GroupBox grpCommon;
+        private System.Windows.Forms.Panel pnlGlobal;
+        private System.Windows.Forms.Label lblGlobalScope;
         private System.Windows.Forms.Button btnCleanOrphan;
         private System.Windows.Forms.Button btnCleanMerged;
         private System.Windows.Forms.Button btnUpdateRemote;
