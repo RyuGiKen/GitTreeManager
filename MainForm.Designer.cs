@@ -584,7 +584,7 @@ namespace GitTreeManager
             this.lblPrompt.AutoSize = true;
             this.lblPrompt.BackColor = System.Drawing.Color.FromArgb(((int)(((byte)(30)))), ((int)(((byte)(30)))), ((int)(((byte)(30)))));
             this.lblPrompt.Font = new System.Drawing.Font("Consolas", 9.5F, System.Drawing.FontStyle.Bold, System.Drawing.GraphicsUnit.Point, ((byte)(0)));
-            this.lblPrompt.ForeColor = System.Drawing.Color.FromArgb(((int)(((byte)(206)))), ((int)(((byte)(145)))), ((int)(((byte)(120)))));
+            this.lblPrompt.ForeColor = System.Drawing.Color.FromArgb(((int)(((byte)(86)))), ((int)(((byte)(156)))), ((int)(((byte)(214)))));
             this.lblPrompt.Location = new System.Drawing.Point(6, 8);
             this.lblPrompt.Name = "lblPrompt";
             this.lblPrompt.Size = new System.Drawing.Size(0, 17);
@@ -595,9 +595,9 @@ namespace GitTreeManager
             //
             this.txtTermInput.Anchor = ((System.Windows.Forms.AnchorStyles)(((System.Windows.Forms.AnchorStyles.Top | System.Windows.Forms.AnchorStyles.Left)
             | System.Windows.Forms.AnchorStyles.Right)));
-            this.txtTermInput.BackColor = System.Drawing.SystemColors.Window;
+            this.txtTermInput.BackColor = System.Drawing.Color.FromArgb(((int)(((byte)(30)))), ((int)(((byte)(30)))), ((int)(((byte)(30)))));
             this.txtTermInput.BorderStyle = System.Windows.Forms.BorderStyle.FixedSingle;
-            this.txtTermInput.ForeColor = System.Drawing.SystemColors.WindowText;
+            this.txtTermInput.ForeColor = System.Drawing.Color.FromArgb(((int)(((byte)(212)))), ((int)(((byte)(212)))), ((int)(((byte)(212)))));
             this.txtTermInput.Font = new System.Drawing.Font("Consolas", 9.5F, System.Drawing.FontStyle.Regular, System.Drawing.GraphicsUnit.Point, ((byte)(0)));
             this.txtTermInput.Location = new System.Drawing.Point(24, 4);
             this.txtTermInput.Name = "txtTermInput";
@@ -689,10 +689,9 @@ namespace GitTreeManager
             //
             // lblGlobalScope
             //
-            this.lblGlobalScope.Anchor = ((System.Windows.Forms.AnchorStyles)((System.Windows.Forms.AnchorStyles.Top | System.Windows.Forms.AnchorStyles.Right)));
             this.lblGlobalScope.AutoSize = true;
             this.lblGlobalScope.ForeColor = System.Drawing.SystemColors.GrayText;
-            this.lblGlobalScope.Location = new System.Drawing.Point(680, 7);
+            this.lblGlobalScope.Location = new System.Drawing.Point(560, 7);
             this.lblGlobalScope.Name = "lblGlobalScope";
             this.lblGlobalScope.Size = new System.Drawing.Size(0, 12);
             this.lblGlobalScope.TabIndex = 3;

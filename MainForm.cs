@@ -60,10 +60,12 @@ namespace GitTreeManager
             UpdateRowLabel();
             UpdatePrompt();
             pnlTermInput.Resize += (s, ev) => LayoutInputRow();
+            pnlGlobal.Resize += (s, ev) => ReflowGlobal();
             // 类型列由 Path 下的 .git 是目录还是文件自动判定；用户改 Path 或 RepoPath 时刷新
             dgvWorktrees.CellValueChanged += DgvWt_CellValueChanged;
             txtRepoPath.TextChanged += (s, ev) => RefreshAllRowTypes();
             RefreshAllRowTypes();
+            ReflowGlobal();
             LogMeta("GitTreeManager 终端 · 输入 git 命令直接回车执行 · ↑↓ 翻历史 · Ctrl+C 中断当前命令");
         }
 
@@ -582,6 +584,21 @@ namespace GitTreeManager
                 return string.IsNullOrEmpty(br) ? ("$ " + name) : ("$ " + name + " (" + br + ")");
             }
             catch { return "$"; }
+        }
+
+        /// <summary>
+        /// 手动布局：lblGlobalScope 靠 btnPreview 左边贴齐，若挤到 chkDryRun 就退化到最小间隙。
+        /// lblGlobalScope 无 Anchor，pnlGlobal 每次尺寸变化都会重算。
+        /// </summary>
+        private void ReflowGlobal()
+        {
+            if (chkDryRun == null || btnPreview == null || lblGlobalScope == null || pnlGlobal == null) return;
+            chkDryRun.PerformLayout();
+            lblGlobalScope.PerformLayout();
+            int minLeft = chkDryRun.Right + 12;
+            int left = btnPreview.Left - lblGlobalScope.Width - 12;
+            if (left < minLeft) left = minLeft;
+            if (lblGlobalScope.Left != left) lblGlobalScope.Left = left;
         }
 
         private void UpdatePrompt()
