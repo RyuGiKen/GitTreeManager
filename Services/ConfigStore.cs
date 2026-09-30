@@ -62,8 +62,10 @@ namespace GitTreeManager.Services
                 var list = new List<WorktreeEntry>();
                 foreach (var el in wts.Elements("Entry"))
                 {
+                    bool isMain = string.Equals((string)el.Attribute("main"), "true", StringComparison.OrdinalIgnoreCase);
                     list.Add(new WorktreeEntry
                     {
+                        IsMain = isMain,
                         Path = (string)el.Attribute("path") ?? "",
                         Branch = (string)el.Attribute("branch") ?? "",
                         UserName = (string)el.Attribute("name") ?? "",
@@ -106,6 +108,7 @@ namespace GitTreeManager.Services
             {
                 if (en == null || en.IsEmpty) continue;
                 yield return new XElement("Entry",
+                    new XAttribute("main", en.IsMain ? "true" : "false"),
                     new XAttribute("path", en.Path ?? ""),
                     new XAttribute("branch", en.Branch ?? ""),
                     new XAttribute("name", en.UserName ?? ""),

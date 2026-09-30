@@ -59,7 +59,56 @@ namespace GitTreeManager
             RefreshGitVersion();
             UpdateRowLabel();
             UpdatePrompt();
+            // 勾选框立即 commit（默认要焦点离开才 commit）+ 主仓库行互斥 + 高亮
+            dgvWorktrees.CurrentCellDirtyStateChanged += DgvWt_CurrentCellDirtyStateChanged;
+            dgvWorktrees.CellValueChanged += DgvWt_CellValueChanged;
+            RefreshMainHighlight();
             LogMeta("GitTreeManager 终端 · 输入 git 命令直接回车执行 · ↑↓ 翻历史 · Ctrl+C 中断当前命令");
+        }
+
+        private bool _updatingMainFlag;
+        private void DgvWt_CurrentCellDirtyStateChanged(object sender, EventArgs e)
+        {
+            if (dgvWorktrees.IsCurrentCellDirty &&
+                dgvWorktrees.CurrentCell is DataGridViewCheckBoxCell)
+            {
+                dgvWorktrees.CommitEdit(DataGridViewDataErrorContexts.Commit);
+            }
+        }
+
+        private void DgvWt_CellValueChanged(object sender, DataGridViewCellEventArgs e)
+        {
+            if (_updatingMainFlag) return;
+            if (e.RowIndex < 0 || e.ColumnIndex < 0) return;
+            if (dgvWorktrees.Columns[e.ColumnIndex].Name != colMain.Name) return;
+            var row = dgvWorktrees.Rows[e.RowIndex];
+            bool val = row.Cells[e.ColumnIndex].Value as bool? ?? false;
+            if (val)
+            {
+                _updatingMainFlag = true;
+                try
+                {
+                    foreach (DataGridViewRow r in dgvWorktrees.Rows)
+                    {
+                        if (r == row) continue;
+                        if (r.Cells[colMain.Name].Value as bool? == true)
+                            r.Cells[colMain.Name].Value = false;
+                    }
+                }
+                finally { _updatingMainFlag = false; }
+            }
+            RefreshMainHighlight();
+        }
+
+        private void RefreshMainHighlight()
+        {
+            foreach (DataGridViewRow r in dgvWorktrees.Rows)
+            {
+                bool isMain = r.Cells[colMain.Name].Value as bool? ?? false;
+                r.DefaultCellStyle.BackColor = isMain
+                    ? Color.FromArgb(0xE6, 0xF2, 0xFF)
+                    : SystemColors.Window;
+            }
         }
 
         protected override void OnFormClosing(FormClosingEventArgs e)
@@ -186,20 +235,20 @@ namespace GitTreeManager
                 LogMeta("[skip] 仓库路径不存在，无法读取 worktree 列表。");
                 return;
             }
-            // 抓 worktree list --porcelain 输出解析回填
-            string stdOut = "", stdErr = "";
+            string stdOut, stdErr;
             try
             {
-                int exit = _runner.DetectGitVersion(s.GitExe) == null
-                    ? -1
-                    : RunCapture(s.GitExe, new GitCommand("-C", s.RepoPath, "worktree", "list", "--porcelain"), out stdOut, out stdErr);
+                int exit = RunCapture(s.GitExe,
+                    new GitCommand("-C", s.RepoPath, "worktree", "list", "--porcelain"),
+                    out stdOut, out stdErr);
                 if (exit != 0)
                 {
                     LogErr("读取 worktree 失败 (exit " + exit + "): " + stdErr);
                     return;
                 }
-                int n = LoadWorktreesFromPorcelain(stdOut);
-                LogMeta("已回填 " + n + " 条 worktree（分支/user.name/user.email 需 git config 逐条读，本版本暂未填）。");
+                int n = LoadWorktreesFromPorcelain(s.GitExe, stdOut);
+                LogMeta("已回填 " + n + " 条 worktree（首行标为主仓库；user.name/email 已按 --local / --worktree 分别拉取）。");
+                UpdatePrompt();
             }
             catch (Exception ex)
             {
@@ -228,7 +277,7 @@ namespace GitTreeManager
             var probe = MakeBranchProbe(s);
 
             LogMeta("═══ Worktree 流水线 ═══");
-            DumpCmds(_builder.BuildInitAndWorktrees(s, probe));
+            DumpCmds(_builder.BuildWorktreeApply(s, probe));
 
             LogMeta("═══ 清理多余提交和引用记录 ═══");
             DumpCmds(_builder.BuildCleanOrphanCommits(s));
@@ -263,7 +312,15 @@ namespace GitTreeManager
                 MessageBox.Show(this, err, "参数不完整", MessageBoxButtons.OK, MessageBoxIcon.Warning);
                 return;
             }
-            var cmds = _builder.BuildInitAndWorktrees(s, MakeBranchProbe(s));
+            // 仓库不存在 → 引导用户先点 创建/克隆
+            if (!Directory.Exists(Path.Combine(s.RepoPath, ".git")))
+            {
+                MessageBox.Show(this,
+                    "主仓库不存在或未初始化。\n请先在上方『仓库位置』填好路径后点『创建』或『克隆』，再回来执行 Worktree 流水线。",
+                    "缺仓库", MessageBoxButtons.OK, MessageBoxIcon.Exclamation);
+                return;
+            }
+            var cmds = _builder.BuildWorktreeApply(s, MakeBranchProbe(s));
             RunBatch(cmds);
         }
 
@@ -553,7 +610,7 @@ namespace GitTreeManager
             return string.Join(" ", parts);
         }
 
-        private int LoadWorktreesFromPorcelain(string output)
+        private int LoadWorktreesFromPorcelain(string gitExe, string output)
         {
             dgvWorktrees.Rows.Clear();
             if (string.IsNullOrEmpty(output)) { UpdateRowLabel(); return 0; }
@@ -564,7 +621,7 @@ namespace GitTreeManager
                 var line = raw;
                 if (line.StartsWith("worktree "))
                 {
-                    if (curPath != null) { entries.Add(MkEntry(curPath, curBranch)); }
+                    if (curPath != null) entries.Add(MkEntry(curPath, curBranch));
                     curPath = line.Substring("worktree ".Length).Trim();
                     curBranch = null;
                 }
@@ -580,18 +637,44 @@ namespace GitTreeManager
                 }
             }
             if (curPath != null) entries.Add(MkEntry(curPath, curBranch));
+            if (entries.Count > 0) entries[0].IsMain = true; // porcelain 首块 = 主仓库
+            // 逐行读 user.name/email：主仓库用 --local、worktree 用 --worktree
+            foreach (var en in entries)
+            {
+                string scope = en.IsMain ? "--local" : "--worktree";
+                en.UserName = ReadConfig(gitExe, en.Path, scope, "user.name");
+                en.UserEmail = ReadConfig(gitExe, en.Path, scope, "user.email");
+            }
             foreach (var en in entries)
             {
                 if (dgvWorktrees.Rows.Count >= MaxRows) break;
                 int idx = dgvWorktrees.Rows.Add();
                 var row = dgvWorktrees.Rows[idx];
                 row.Cells[colNum.Name].Value = idx + 1;
+                row.Cells[colMain.Name].Value = en.IsMain;
                 row.Cells[colPath.Name].Value = en.Path;
                 row.Cells[colBranch.Name].Value = en.Branch;
+                row.Cells[colName.Name].Value = en.UserName;
+                row.Cells[colEmail.Name].Value = en.UserEmail;
             }
             RenumberRows();
             UpdateRowLabel();
+            RefreshMainHighlight();
             return entries.Count;
+        }
+
+        private string ReadConfig(string gitExe, string workDir, string scopeFlag, string key)
+        {
+            if (string.IsNullOrWhiteSpace(workDir)) return "";
+            try
+            {
+                string so, se;
+                int exit = RunCapture(gitExe,
+                    new GitCommand("-C", workDir, "config", scopeFlag, key),
+                    out so, out se);
+                return exit == 0 ? (so ?? "").Trim() : "";
+            }
+            catch { return ""; }
         }
 
         private static WorktreeEntry MkEntry(string path, string branch)
@@ -643,12 +726,14 @@ namespace GitTreeManager
                     int idx = dgvWorktrees.Rows.Add();
                     var row = dgvWorktrees.Rows[idx];
                     row.Cells[colNum.Name].Value = idx + 1;
+                    row.Cells[colMain.Name].Value = en.IsMain;
                     row.Cells[colPath.Name].Value = en.Path;
                     row.Cells[colBranch.Name].Value = en.Branch;
                     row.Cells[colName.Name].Value = en.UserName;
                     row.Cells[colEmail.Name].Value = en.UserEmail;
                 }
             }
+            RefreshMainHighlight();
         }
 
         private AppSettings CollectSettingsFromUi()
@@ -667,6 +752,7 @@ namespace GitTreeManager
             {
                 s.Entries.Add(new WorktreeEntry
                 {
+                    IsMain = (row.Cells[colMain.Name].Value as bool?) ?? false,
                     Path = AsStr(row.Cells[colPath.Name].Value),
                     Branch = AsStr(row.Cells[colBranch.Name].Value),
                     UserName = AsStr(row.Cells[colName.Name].Value),

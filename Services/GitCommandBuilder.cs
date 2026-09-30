@@ -80,46 +80,42 @@ namespace GitTreeManager.Services
             return list;
         }
 
-        // ---------- Worktree 初始化主流程 ----------
-        // branchExists 回调用于真跑前预检分支是否已存在：
-        //   存在 → `git worktree add <path> <branch>`（不加 -b）
-        //   不存在 → `git worktree add <path> -b <branch>`
-        // 不传回调按"不存在"处理（保持 dry-run 预览稳定）。
-        public IList<GitCommand> BuildInitAndWorktrees(AppSettings s, System.Func<string, bool> branchExists = null)
+        // ---------- Worktree 流水线（Tab 内 "执行" 按钮用） ----------
+        // 只处理表格里的每一行，不再做 init/clone（那是 grpRepo 右侧 "创建/克隆" 的职责）。
+        // IsMain=true 的行：不 worktree add；config 用 --local 前缀。
+        // IsMain=false 的行：worktree add（branchExists 探针决定要不要 -b）；config 用 --worktree。
+        public IList<GitCommand> BuildWorktreeApply(AppSettings s, System.Func<string, bool> branchExists = null)
         {
             var list = new List<GitCommand>();
-            if (s == null) return list;
-
-            if (s.Mode == RepoMode.New)
-            {
-                list.Add(new GitCommand("init", "-b", s.DefaultBranch ?? "main", s.RepoPath));
-            }
-            else
-            {
-                if (!string.IsNullOrWhiteSpace(s.DefaultBranch))
-                    list.Add(new GitCommand("clone", "-b", s.DefaultBranch, s.RemoteUrl ?? "", s.RepoPath));
-                else
-                    list.Add(new GitCommand("clone", s.RemoteUrl ?? "", s.RepoPath));
-            }
-
+            if (s == null || string.IsNullOrWhiteSpace(s.RepoPath)) return list;
+            // 保证 per-worktree config 支持开启；幂等
             list.Add(new GitCommand("-C", s.RepoPath, "config", "extensions.worktreeConfig", "true"));
-
             foreach (var en in s.Entries ?? new List<WorktreeEntry>())
             {
-                if (en == null || en.IsEmpty) continue;
+                if (en == null) continue;
+                string path = (en.Path ?? "").Trim();
+                if (string.IsNullOrWhiteSpace(path)) continue;
+                if (en.IsMain)
+                {
+                    if (!string.IsNullOrWhiteSpace(en.UserName))
+                        list.Add(new GitCommand("-C", path, "config", "--local", "user.name", en.UserName));
+                    if (!string.IsNullOrWhiteSpace(en.UserEmail))
+                        list.Add(new GitCommand("-C", path, "config", "--local", "user.email", en.UserEmail));
+                    continue;
+                }
                 bool exists = false;
                 if (branchExists != null && !string.IsNullOrWhiteSpace(en.Branch))
                 {
                     try { exists = branchExists(en.Branch); } catch { exists = false; }
                 }
                 if (exists)
-                    list.Add(new GitCommand("-C", s.RepoPath, "worktree", "add", en.Path ?? "", en.Branch));
+                    list.Add(new GitCommand("-C", s.RepoPath, "worktree", "add", path, en.Branch));
                 else
-                    list.Add(new GitCommand("-C", s.RepoPath, "worktree", "add", en.Path ?? "", "-b", en.Branch ?? ""));
+                    list.Add(new GitCommand("-C", s.RepoPath, "worktree", "add", path, "-b", en.Branch ?? ""));
                 if (!string.IsNullOrWhiteSpace(en.UserName))
-                    list.Add(new GitCommand("-C", en.Path, "config", "--worktree", "user.name", en.UserName));
+                    list.Add(new GitCommand("-C", path, "config", "--worktree", "user.name", en.UserName));
                 if (!string.IsNullOrWhiteSpace(en.UserEmail))
-                    list.Add(new GitCommand("-C", en.Path, "config", "--worktree", "user.email", en.UserEmail));
+                    list.Add(new GitCommand("-C", path, "config", "--worktree", "user.email", en.UserEmail));
             }
             return list;
         }

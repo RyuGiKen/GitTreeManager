@@ -39,6 +39,7 @@ namespace GitTreeManager
             this.lblWtCount = new System.Windows.Forms.Label();
             this.dgvWorktrees = new System.Windows.Forms.DataGridView();
             this.colNum = new System.Windows.Forms.DataGridViewTextBoxColumn();
+            this.colMain = new System.Windows.Forms.DataGridViewCheckBoxColumn();
             this.colPath = new System.Windows.Forms.DataGridViewTextBoxColumn();
             this.colBranch = new System.Windows.Forms.DataGridViewTextBoxColumn();
             this.colName = new System.Windows.Forms.DataGridViewTextBoxColumn();
@@ -368,6 +369,7 @@ namespace GitTreeManager
             this.dgvWorktrees.ColumnHeadersHeightSizeMode = System.Windows.Forms.DataGridViewColumnHeadersHeightSizeMode.AutoSize;
             this.dgvWorktrees.Columns.AddRange(new System.Windows.Forms.DataGridViewColumn[] {
             this.colNum,
+            this.colMain,
             this.colPath,
             this.colBranch,
             this.colName,
@@ -387,6 +389,13 @@ namespace GitTreeManager
             this.colNum.Name = "colNum";
             this.colNum.ReadOnly = true;
             this.colNum.Width = 40;
+            //
+            // colMain
+            //
+            this.colMain.HeaderText = "主仓库";
+            this.colMain.Name = "colMain";
+            this.colMain.Resizable = System.Windows.Forms.DataGridViewTriState.False;
+            this.colMain.Width = 60;
             //
             // colPath
             //
@@ -790,6 +799,7 @@ namespace GitTreeManager
         private System.Windows.Forms.Label lblWtCount;
         private System.Windows.Forms.DataGridView dgvWorktrees;
         private System.Windows.Forms.DataGridViewTextBoxColumn colNum;
+        private System.Windows.Forms.DataGridViewCheckBoxColumn colMain;
         private System.Windows.Forms.DataGridViewTextBoxColumn colPath;
         private System.Windows.Forms.DataGridViewTextBoxColumn colBranch;
         private System.Windows.Forms.DataGridViewTextBoxColumn colName;

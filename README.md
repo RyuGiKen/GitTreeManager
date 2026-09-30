@@ -27,23 +27,31 @@ Tree/
 顶部 grpRepo：**左区**三行 = 仓库路径 + 模式单选 + 默认分支 + git.exe 路径；**右区**一列 3 个统一 116×25 按钮，与三行左内容顶对齐：Y=25 浏览仓库路径 / Y=57 创建·克隆（文字随 rbNew/rbClone 切换）/ Y=89 浏览 git.exe。git.exe 启动时按 `GIT_HOME → Program Files\Git\cmd → Program Files\Git\bin → Program Files (x86)\Git → %LOCALAPPDATA%\Programs\Git` 顺序自动探测，找不到回退 `git`。
 
 中间 TabControl 两页：
-1. **Worktree**：DataGridView 最多 99 行，列 = `# / worktree 路径 / 分支 / user.name / user.email`；工具条按钮统一宽度（80/80/50/50/140/80，间距 6）；底部右侧"预览命令"与"执行"两按钮各 120×28 紧挨右锚；左下 Dry-run 复选框默认勾选。
+1. **Worktree**：DataGridView 最多 99 行，列 = `# / 主仓库(勾选) / worktree 路径 / 分支 / user.name / user.email`；勾选"主仓库"的行淡蓝背景高亮，且行内互斥（同时只能有一行是主仓库）。工具条按钮统一宽度；底部右锚只有"执行"。
 2. **终端**：只读 RichTextBox + 底部 `$` prompt + 输入行；彩色分级（命令蓝 / stdout 黑 / stderr 红 / meta 灰 / 完成绿 / 失败红加粗）；支持 `git ...` 或裸子命令自动加 git 前缀；↑↓ 翻历史；Ctrl+C 或"中断"按钮 Kill 当前 git 子进程；工具条：清空 / 中断 / 导出 .bat / 导出 .ps1。
 
 底部 grpCommon：一行 5 个 200×30 按钮，间距 18，全行刚好铺满 grpCommon 内部宽度。
 
 ## 命令流水线
 
-`GitCommandBuilder.BuildInitAndWorktrees(settings)` 产出：
+**两级分离**（避免"执行"按钮既建仓库又建 worktree 的语义混淆）：
 
-1. `git init -b <default> <RepoPath>` 或 `git clone -b <default> <url> <RepoPath>`
-2. `git -C <RepoPath> config extensions.worktreeConfig true`
-3. 每行 worktree：
-   - `git -C <RepoPath> worktree add <path> -b <branch>`
-   - `git -C <path> config --worktree user.name <name>`
-   - `git -C <path> config --worktree user.email <email>`
+1. **仓库级** —— grpRepo 右侧"创建/克隆"按钮 → `BuildInitOrCloneOnly`：
+   - 新建：`git init -b <default> <RepoPath>`
+   - 克隆：`git clone -b <default> <url> <RepoPath>`
+   - 收尾：`git -C <RepoPath> config extensions.worktreeConfig true`
 
-**注意**：骨架阶段假定分支不存在，一律加 `-b`。下一轮补自动检测：`git branch --list <b>` 非空则去掉 `-b`；否则失败即停并回报。
+2. **Worktree 级** —— Worktree tab 底部"执行"按钮 → `BuildWorktreeApply`：
+   - 幂等前置：`git -C <RepoPath> config extensions.worktreeConfig true`
+   - 每行分两种：
+     - **主仓库行**（IsMain=true，淡蓝高亮）：不 `worktree add`；`git -C <path> config --local user.name <x>`（`--local` 前缀，不带 `--worktree`）
+     - **worktree 行**：`git -C <RepoPath> worktree add <path> [-b] <branch>` → `git -C <path> config --worktree user.name <x>` → 同 email
+   - 若主仓库不存在（`.git` 目录缺失），"执行"直接弹提示让用户先点"创建/克隆"
+   - 分支存在性探针：`git branch --list <b> --format=%(refname:short)` 非空 → 不加 `-b`（实测否则 fatal 分支已存在）
+
+**读取现有 worktree** —— Worktree tab 工具条按钮：
+- `git worktree list --porcelain` 首块视为主仓库（IsMain=true），后续块为 linked worktrees
+- 主仓库读 `--local user.name/email`；worktree 读 `--worktree user.name/email`（未覆盖时可能为空，符合预期）
 
 ## 常用功能按钮
 
@@ -54,7 +62,7 @@ Tree/
 | 1 | 清理多余提交和引用记录 | 不在分支树上的孤儿 commit + dangling 对象；连 reflog 里对它们的引用记录一并释放 | `git fsck --full --unreachable --dangling --no-reflogs` → `git reflog expire --expire=now --all` → `git prune --expire=now -v` → `git gc --prune=now` |
 | 2 | 清理已合并分支 | 已合并到默认分支、且不是任何 worktree 当前 checkout、也不是默认分支/HEAD 的本地分支 | 扫描：`git worktree list --porcelain` + `git branch --merged <default> --format=%(refname:short)` + `git rev-parse --abbrev-ref HEAD`；上层算差集 → 弹勾选 → `git branch -d <x>` |
 | 3 | 更新远端 | 所有 remote、所有分支、tags、prune 失效追踪、submodule 按需递归 | `git fetch --all --prune --tags --recurse-submodules=on-demand` → `git remote update --prune` |
-| 4 | 仓库磁盘分析 | `.git` 内部对象、pack 明细、LFS、worktrees 各自占用 | git 侧：`git count-objects -v -H` + `git verify-pack -v`；文件系统侧由 C# 遍历（下一轮补） |
+| 4 | 仓库磁盘分析 | `.git` 内部对象、pack 明细、LFS、worktrees 各自占用 | git 侧：`git count-objects -v -H`；文件系统侧：C# 遍历 pack Top N / 松散对象 / LFS / worktrees 元数据 / reflog / hooks / .git 总占用 / 工作副本（不含 .git） |
 | 5 | 对齐最新提交 | 让 HEAD 的 committer date/name/email 分别等于 author 的对应字段 | `git show -s --format=%an HEAD` → `%ae` → `%aI` → `GIT_COMMITTER_NAME=... GIT_COMMITTER_EMAIL=... GIT_COMMITTER_DATE=... git commit --amend --no-edit` |
 
 **关键实现细节**
