@@ -63,7 +63,7 @@ namespace GitTreeManager
             pnlGlobal.Resize += (s, ev) => ReflowGlobal();
             // 类型列由 Path 下的 .git 是目录还是文件自动判定；用户改 Path 或 RepoPath 时刷新
             dgvWorktrees.CellValueChanged += DgvWt_CellValueChanged;
-            txtRepoPath.TextChanged += (s, ev) => RefreshAllRowTypes();
+            txtRepoPath.TextChanged += (s, ev) => { RefreshRepoStatus(); RefreshAllRowTypes(); };
             // UpdatePrompt 每次都同步跑一条 git rev-parse，逐字符敲不合适；挂 Leave（失焦=编辑完成）
             txtRepoPath.Leave += (s, ev) => { UpdatePrompt(); RefreshAllRowTypes(); };
             txtRepoPath.KeyDown += (s, ev) => { if (ev.KeyCode == Keys.Enter) { ProcessTxtRepoEnter(); ev.SuppressKeyPress = true; } };
@@ -717,12 +717,57 @@ namespace GitTreeManager
             RefreshRepoStatus();
         }
 
-        /// <summary>底部状态栏"仓库: xxx"跟着 txtRepoPath 一起刷新（Leave/Enter/浏览框三条路径都覆盖到）。</summary>
+        /// <summary>底部状态栏"仓库: xxx"跟着 txtRepoPath 一起刷新（Leave/Enter/浏览框三条路径都覆盖到）。
+        /// 同时给 txtRepoPath 上一个状态色背景，用户在打字时能立刻看出这个路径是哪一类。</summary>
         private void RefreshRepoStatus()
         {
             if (stsRepo == null || txtRepoPath == null) return;
             string path = PathUtil.ToNative(txtRepoPath.Text.Trim());
-            stsRepo.Text = "仓库: " + (string.IsNullOrEmpty(path) ? "(未填)" : path);
+            var state = ClassifyRepoPath(path);
+            switch (state)
+            {
+                case RepoPathState.Empty:
+                    stsRepo.Text = "仓库: (未填)";
+                    stsRepo.ForeColor = SystemColors.GrayText;
+                    txtRepoPath.BackColor = SystemColors.Window;
+                    break;
+                case RepoPathState.Pending:
+                    stsRepo.Text = "仓库: [待创建] " + path;
+                    stsRepo.ForeColor = Color.FromArgb(0, 100, 160);
+                    txtRepoPath.BackColor = Color.FromArgb(0xFF, 0xF3, 0xE0); // 淡橙
+                    break;
+                case RepoPathState.NotGit:
+                    stsRepo.Text = "仓库: [非 Git 目录] " + path;
+                    stsRepo.ForeColor = Color.FromArgb(196, 40, 40);
+                    txtRepoPath.BackColor = Color.FromArgb(0xFF, 0xEB, 0xEE); // 淡红
+                    break;
+                case RepoPathState.Main:
+                    stsRepo.Text = "仓库: [主仓库 ✓] " + path;
+                    stsRepo.ForeColor = Color.FromArgb(0, 128, 0);
+                    txtRepoPath.BackColor = Color.FromArgb(0xE8, 0xF5, 0xE9); // 淡绿
+                    break;
+                case RepoPathState.LinkedWt:
+                    stsRepo.Text = "仓库: [linked worktree ✓] " + path;
+                    stsRepo.ForeColor = Color.FromArgb(0, 128, 0);
+                    txtRepoPath.BackColor = Color.FromArgb(0xE8, 0xF5, 0xE9);
+                    break;
+            }
+        }
+
+        private enum RepoPathState { Empty, Pending, NotGit, Main, LinkedWt }
+
+        private static RepoPathState ClassifyRepoPath(string normalizedPath)
+        {
+            if (string.IsNullOrEmpty(normalizedPath)) return RepoPathState.Empty;
+            try
+            {
+                if (!Directory.Exists(normalizedPath)) return RepoPathState.Pending;
+                string gitPath = Path.Combine(normalizedPath, ".git");
+                if (Directory.Exists(gitPath)) return RepoPathState.Main;
+                if (File.Exists(gitPath)) return RepoPathState.LinkedWt;
+                return RepoPathState.NotGit;
+            }
+            catch { return RepoPathState.NotGit; }
         }
 
         /// <summary>
