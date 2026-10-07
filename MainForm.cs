@@ -111,12 +111,78 @@ namespace GitTreeManager
         private void RefreshRowType(DataGridViewRow row)
         {
             if (row == null) return;
-            string path = AsStr(row.Cells[colPath.Name].Value).Trim();
+            string path = PathUtil.ToNative(AsStr(row.Cells[colPath.Name].Value).Trim());
             bool isMain = DetectIsMain(path);
             row.Cells[colType.Name].Value = isMain ? "主仓库" : "worktree";
-            row.DefaultCellStyle.BackColor = isMain
-                ? Color.FromArgb(0xE6, 0xF2, 0xFF)
-                : SystemColors.Window;
+
+            // 判本行是否属于当前 RepoPath 解析出的主仓库；跨仓库/未创建/不是 git 目录时不误标
+            string currentMain = ResolveMainRepo(PathUtil.ToNative(txtRepoPath.Text.Trim()));
+            bool stale = IsStale(path, currentMain);
+
+            if (stale)
+            {
+                row.DefaultCellStyle.BackColor = Color.FromArgb(0xFF, 0xF0, 0xE0); // 淡橙，跨仓库
+                row.Cells[colPath.Name].Style = new DataGridViewCellStyle
+                {
+                    ForeColor = Color.FromArgb(0xA5, 0x2A, 0x2A),
+                    Font = new Font(dgvWorktrees.Font, FontStyle.Strikeout)
+                };
+            }
+            else
+            {
+                row.DefaultCellStyle.BackColor = isMain
+                    ? Color.FromArgb(0xE6, 0xF2, 0xFF) // 淡蓝，主仓库
+                    : SystemColors.Window;
+                // 清空 cell 级覆盖，回到 row/grid 继承色
+                row.Cells[colPath.Name].Style = new DataGridViewCellStyle();
+            }
+        }
+
+        /// <summary>
+        /// 解析路径所属主仓库根：
+        ///   &lt;path&gt;\.git 是目录 → 返回 &lt;path&gt;
+        ///   &lt;path&gt;\.git 是文件 (gitdir: &lt;main&gt;\.git\worktrees\&lt;n&gt;) → 上溯 3 层
+        ///   路径不存在 / .git 缺失 / 解析失败 → 返回 null
+        /// </summary>
+        private static string ResolveMainRepo(string path)
+        {
+            if (string.IsNullOrWhiteSpace(path)) return null;
+            try
+            {
+                if (!Directory.Exists(path)) return null;
+                string gitPath = Path.Combine(path, ".git");
+                if (Directory.Exists(gitPath)) return Path.GetFullPath(path);
+                if (File.Exists(gitPath))
+                {
+                    string txt = (File.ReadAllText(gitPath) ?? "").Trim();
+                    if (!txt.StartsWith("gitdir:", StringComparison.OrdinalIgnoreCase)) return null;
+                    string p = txt.Substring("gitdir:".Length).Trim();
+                    if (string.IsNullOrEmpty(p)) return null;
+                    if (!Path.IsPathRooted(p)) p = Path.GetFullPath(Path.Combine(path, p));
+                    var worktrees = Directory.GetParent(p);            // <main>\.git\worktrees
+                    if (worktrees == null) return null;
+                    var gitDir = worktrees.Parent;                     // <main>\.git
+                    if (gitDir == null) return null;
+                    var main = gitDir.Parent;                          // <main>
+                    return main == null ? null : Path.GetFullPath(main.FullName);
+                }
+            }
+            catch { }
+            return null;
+        }
+
+        /// <summary>
+        /// 该行是否"跨仓库"（Path 存在且属于另一个主仓库）。
+        /// 未创建、不是 git 目录、当前 RepoPath 无效 → 返回 false，避免误标。
+        /// </summary>
+        private static bool IsStale(string path, string currentMainRepo)
+        {
+            if (string.IsNullOrEmpty(currentMainRepo)) return false;
+            if (string.IsNullOrEmpty(path)) return false;
+            if (!Directory.Exists(path)) return false; // 待创建
+            string own = ResolveMainRepo(path);
+            if (string.IsNullOrEmpty(own)) return false; // 不是 git 目录，不判断
+            return !string.Equals(own, currentMainRepo, StringComparison.OrdinalIgnoreCase);
         }
 
         private void RefreshAllRowTypes()
