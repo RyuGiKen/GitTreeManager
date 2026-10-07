@@ -163,7 +163,6 @@ namespace GitTreeManager
                 if (dlg.ShowDialog(this) == DialogResult.OK)
                 {
                     txtRepoPath.Text = dlg.SelectedPath;
-                    stsRepo.Text = "仓库: " + dlg.SelectedPath;
                     UpdatePrompt();
                     RefreshAllRowTypes();
                 }
@@ -649,6 +648,15 @@ namespace GitTreeManager
         {
             lblPrompt.Text = PromptText();
             LayoutInputRow();
+            RefreshRepoStatus();
+        }
+
+        /// <summary>底部状态栏"仓库: xxx"跟着 txtRepoPath 一起刷新（Leave/Enter/浏览框三条路径都覆盖到）。</summary>
+        private void RefreshRepoStatus()
+        {
+            if (stsRepo == null || txtRepoPath == null) return;
+            string path = PathUtil.ToNative(txtRepoPath.Text.Trim());
+            stsRepo.Text = "仓库: " + (string.IsNullOrEmpty(path) ? "(未填)" : path);
         }
 
         /// <summary>
