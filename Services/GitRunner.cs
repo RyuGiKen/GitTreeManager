@@ -44,7 +44,7 @@ namespace GitTreeManager.Services
         private volatile Process _current;
         private volatile bool _cancelRequested;
 
-        public int TimeoutMs { get; set; } = 60_000;
+        public int TimeoutMs { get; set; } = 300_000;
         public bool StopOnFirstFailure { get; set; } = true;
 
         /// <summary>请求中断当前正在运行的 git 子进程；对 dry-run / 空闲状态无副作用。</summary>
@@ -233,6 +233,10 @@ namespace GitTreeManager.Services
                     stdErr = esb.ToString();
                     throw new TimeoutException("git 命令超时 " + TimeoutMs + " ms，已终止");
                 }
+                // 关键：WaitForExit(int) 只保证进程退出，异步 OutputDataReceived 线程可能仍在 flush。
+                // 再调一次无参 WaitForExit() 会阻塞至 stdout/stderr 两个异步读流 EOF，防止
+                // CaptureStdoutAs 抓到空/半截值（例如"对齐最新提交"里 GIT_COMMITTER_* 会漏）。
+                p.WaitForExit();
                 int exit = p.ExitCode;
                 _current = null;
                 stdOut = osb.ToString();

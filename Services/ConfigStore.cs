@@ -31,9 +31,8 @@ namespace GitTreeManager.Services
         public AppSettings Load()
         {
             if (!File.Exists(_path)) return new AppSettings();
-            XDocument doc;
-            try { doc = XDocument.Load(_path); }
-            catch { return new AppSettings(); }
+            // 让 XDocument.Load 的异常抛给上层：MainForm 需要知道"xml 损坏"以便关闭时不覆盖旧配置 (P0-4)
+            var doc = XDocument.Load(_path);
             var root = doc.Root;
             if (root == null) return new AppSettings();
 

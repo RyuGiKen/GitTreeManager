@@ -31,6 +31,8 @@ namespace GitTreeManager
         private readonly List<string> _history = new List<string>();
         private int _histIdx = -1;
         private int _isRunning; // 0/1 via Interlocked
+        private bool _loadFailed; // 配置读取失败时抑制 close-time save，避免用默认值覆盖旧 xml
+        private readonly List<GitCommand> _lastCmdsForExport = new List<GitCommand>();
 
         public MainForm()
         {
@@ -47,7 +49,8 @@ namespace GitTreeManager
             }
             catch (Exception ex)
             {
-                LogMeta("[warn] 读取配置失败: " + ex.Message);
+                _loadFailed = true;
+                LogMeta("[warn] 读取配置失败: " + ex.Message + "（关闭时不会覆盖旧配置）");
                 _current = new AppSettings();
             }
             if (string.IsNullOrWhiteSpace(_current.GitExe) ||
@@ -125,7 +128,7 @@ namespace GitTreeManager
                 row.Cells[colPath.Name].Style = new DataGridViewCellStyle
                 {
                     ForeColor = Color.FromArgb(0xA5, 0x2A, 0x2A),
-                    Font = new Font(dgvWorktrees.Font, FontStyle.Strikeout)
+                    Font = GridStrikeoutFont
                 };
             }
             else
@@ -202,16 +205,33 @@ namespace GitTreeManager
 
         protected override void OnFormClosing(FormClosingEventArgs e)
         {
+            // 先让 grid 提交任何 in-progress 编辑，避免用户敲一半丢数据 (P0-4)
+            try { dgvWorktrees.CurrentCell = null; } catch { }
             try
             {
-                var s = CollectSettingsFromUi();
-                _store.Save(s);
+                if (!_loadFailed)
+                {
+                    var s = CollectSettingsFromUi();
+                    _store.Save(s);
+                }
             }
             catch (Exception ex)
             {
-                LogMeta("[warn] 保存配置失败: " + ex.Message);
+                // 用 MessageBox 明说，别只写终端——关窗后终端就没了，用户以为"设置生效了"
+                MessageBox.Show(this,
+                    "保存配置失败：" + ex.Message +
+                    "\n\n本次修改不会保留。若程序装在 Program Files，请改到用户目录（如 %LOCALAPPDATA%）或用管理员权限运行。",
+                    "配置保存失败", MessageBoxButtons.OK, MessageBoxIcon.Warning);
             }
             base.OnFormClosing(e);
+        }
+
+        protected override void OnFormClosed(FormClosedEventArgs e)
+        {
+            // 缓存的 Font 释放 GDI 句柄 (P1-11)
+            if (_rtBoldFont != null) { _rtBoldFont.Dispose(); _rtBoldFont = null; }
+            if (_gridStrikeoutFont != null) { _gridStrikeoutFont.Dispose(); _gridStrikeoutFont = null; }
+            base.OnFormClosed(e);
         }
 
         // ---------- 顶部仓库区 ----------
@@ -386,6 +406,7 @@ namespace GitTreeManager
         {
             var s = CollectSettingsFromUi();
             var probe = MakeBranchProbe(s);
+            _lastCmdsForExport.Clear();
 
             LogMeta("═══ Worktree 流水线 ═══");
             DumpCmds(_builder.BuildWorktreeApply(s, probe));
@@ -411,6 +432,7 @@ namespace GitTreeManager
         private void DumpCmds(IList<GitCommand> cmds)
         {
             if (cmds == null || cmds.Count == 0) { LogMeta("(无命令)"); return; }
+            _lastCmdsForExport.AddRange(cmds);
             for (int i = 0; i < cmds.Count; i++) WriteCommand(cmds[i], null, null);
         }
 
@@ -471,8 +493,67 @@ namespace GitTreeManager
         private void btnCleanMerged_Click(object sender, EventArgs e)
         {
             var s = CollectSettingsFromUi();
-            LogMeta("[功能] 清理已合并分支（排除 worktree 占用与默认分支）");
-            RunBatch(_builder.BuildCleanMergedBranches(s));
+            LogMeta("[功能] 清理已合并分支（自动排除 worktree 锁定 / 默认分支 / 当前 HEAD）");
+            if (!RepoIsGitRepo(s.RepoPath)) { LogErr("    RepoPath 不是 git 仓库，跳过。"); return; }
+            if (chkDryRun.Checked)
+            {
+                var cmds = _builder.BuildCleanMergedBranches(s);
+                _lastCmdsForExport.Clear();
+                _lastCmdsForExport.AddRange(cmds);
+                foreach (var c in cmds) WriteCommand(c, null, null);
+                LogMeta("── Dry-run 只列扫描命令；取消勾选后点会真跑并给出可删候选。");
+                return;
+            }
+            StartOnBackground(() => ScanMergedCandidates(s));
+        }
+
+        private void ScanMergedCandidates(AppSettings s)
+        {
+            string def = string.IsNullOrWhiteSpace(s.DefaultBranch) ? "main" : s.DefaultBranch;
+            string wtOut, brOut, curOut;
+            int rc;
+            var c1 = new GitCommand("-C", s.RepoPath, "worktree", "list", "--porcelain");
+            WriteCommand(c1, null, null);
+            rc = RunCapture(s.GitExe, c1, out wtOut, out _);
+            if (rc != 0) { LogErr("    worktree list 失败 exit=" + rc); return; }
+            var locked = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
+            foreach (var line in (wtOut ?? "").Replace("\r\n", "\n").Split('\n'))
+            {
+                if (line.StartsWith("branch refs/heads/"))
+                {
+                    string b = line.Substring("branch refs/heads/".Length).Trim();
+                    if (!string.IsNullOrEmpty(b)) locked.Add(b);
+                }
+            }
+            var c2 = new GitCommand("-C", s.RepoPath, "branch", "--merged", def, "--format=%(refname:short)");
+            WriteCommand(c2, null, null);
+            rc = RunCapture(s.GitExe, c2, out brOut, out _);
+            if (rc != 0) { LogErr("    branch --merged 失败 exit=" + rc); return; }
+            var merged = new List<string>();
+            foreach (var line in (brOut ?? "").Replace("\r\n", "\n").Split('\n'))
+            {
+                string b = (line ?? "").Trim();
+                if (!string.IsNullOrEmpty(b)) merged.Add(b);
+            }
+            var c3 = new GitCommand("-C", s.RepoPath, "rev-parse", "--abbrev-ref", "HEAD");
+            WriteCommand(c3, null, null);
+            RunCapture(s.GitExe, c3, out curOut, out _);
+            string current = (curOut ?? "").Trim();
+
+            var candidates = new List<string>();
+            foreach (var b in merged)
+            {
+                if (locked.Contains(b)) continue;
+                if (string.Equals(b, def, StringComparison.OrdinalIgnoreCase)) continue;
+                if (!string.IsNullOrEmpty(current) && string.Equals(b, current, StringComparison.OrdinalIgnoreCase)) continue;
+                candidates.Add(b);
+            }
+            LogMeta("═══ 可删候选 " + candidates.Count + " 条 ═══");
+            if (candidates.Count == 0) { LogMeta("    (无候选)"); return; }
+            foreach (var b in candidates) Write("    " + b, TermKind.Cmd);
+            LogMeta("── 下一轮加勾选对话框；目前若要删，请在终端里手动跑：");
+            foreach (var b in candidates)
+                Write("  git -C " + s.RepoPath + " branch -d " + b, TermKind.Meta);
         }
 
         private void btnUpdateRemote_Click(object sender, EventArgs e)
@@ -511,6 +592,8 @@ namespace GitTreeManager
             bool dry = chkDryRun.Checked;
             if (dry)
             {
+                _lastCmdsForExport.Clear();
+                _lastCmdsForExport.AddRange(cmds);
                 for (int i = 0; i < cmds.Count; i++) WriteCommand(cmds[i], i + 1, cmds.Count);
                 LogMeta("── Dry-run 未执行，共 " + cmds.Count + " 条 ──");
                 if (onAfterRun != null) onAfterRun();
@@ -520,6 +603,8 @@ namespace GitTreeManager
                 "即将实际执行 " + cmds.Count + " 条命令，一行失败即中断全部。是否继续？",
                 "二次确认", MessageBoxButtons.YesNo, MessageBoxIcon.Exclamation);
             if (r != DialogResult.Yes) return;
+            _lastCmdsForExport.Clear();
+            _lastCmdsForExport.AddRange(cmds);
             var s = CollectSettingsFromUi();
             if (onAfterRun == null)
             {
@@ -546,11 +631,19 @@ namespace GitTreeManager
             var th = new Thread(() =>
             {
                 try { work(); }
-                catch (Exception ex) { LogErr("!! " + ex.Message); }
+                catch (Exception ex) { try { LogErr("!! " + ex.Message); } catch { } }
                 finally
                 {
                     Interlocked.Exchange(ref _isRunning, 0);
-                    BeginInvoke((Action)(() => SetBusyUi(false)));
+                    // 只有仍在同一"忙周期"内没人接盘时才解锁 UI；用 try/catch 兜住窗体已 Dispose 的情况
+                    try
+                    {
+                        BeginInvoke((Action)(() =>
+                        {
+                            if (Interlocked.CompareExchange(ref _isRunning, 0, 0) == 0) SetBusyUi(false);
+                        }));
+                    }
+                    catch { /* 窗体已关闭，忽略 */ }
                 }
             }) { IsBackground = true };
             th.Start();
@@ -563,6 +656,19 @@ namespace GitTreeManager
             btnExecute.Enabled = !busy;
             btnPreview.Enabled = !busy;
             btnInitRepo.Enabled = !busy;
+            // 忙时锁死所有能再次触发起子进程 / 改表格状态的按钮，避免并发交错 (P1-7)
+            btnWtRead.Enabled = !busy;
+            btnWtAdd.Enabled = !busy;
+            btnWtRemove.Enabled = !busy;
+            btnWtUp.Enabled = !busy;
+            btnWtDown.Enabled = !busy;
+            btnWtClear.Enabled = !busy;
+            btnCleanOrphan.Enabled = !busy;
+            btnCleanMerged.Enabled = !busy;
+            btnUpdateRemote.Enabled = !busy;
+            btnDiskAnalyze.Enabled = !busy;
+            btnAlignCommit.Enabled = !busy;
+            chkDryRun.Enabled = !busy;
         }
 
         // ---------- 终端页 ----------
@@ -583,27 +689,89 @@ namespace GitTreeManager
 
         private void ExportTermScript(string kind)
         {
+            if (_lastCmdsForExport.Count == 0)
+            {
+                MessageBox.Show(this,
+                    "终端里目前没有可导出的命令列表。\n请先点『预览全部命令』、『执行』或任一常用功能按钮，让工具记下要跑的命令。",
+                    "无可导出内容", MessageBoxButtons.OK, MessageBoxIcon.Information);
+                return;
+            }
             using (var dlg = new SaveFileDialog())
             {
                 dlg.Filter = kind == "batch" ? "批处理脚本 (*.bat)|*.bat" : "PowerShell 脚本 (*.ps1)|*.ps1";
                 dlg.FileName = kind == "batch" ? "git-tree-manager.bat" : "git-tree-manager.ps1";
                 if (dlg.ShowDialog(this) != DialogResult.OK) return;
                 var sb = new StringBuilder();
-                if (kind == "batch") sb.AppendLine("@echo off").AppendLine("rem generated by GitTreeManager");
-                else sb.AppendLine("# generated by GitTreeManager");
-                foreach (var raw in rchTerm.Lines)
+                bool anyEnv = false;
+                foreach (var c in _lastCmdsForExport) if (c.Env != null && c.Env.Count > 0) { anyEnv = true; break; }
+                if (kind == "batch")
                 {
-                    string line = raw;
-                    int idx = line.IndexOf("] $ ");
-                    if (idx >= 0) line = line.Substring(idx + 2);
-                    if (line.StartsWith("$ ")) { sb.AppendLine(line.Substring(2)); continue; }
-                    if (kind == "batch") sb.AppendLine("echo " + line.Replace("\"", "\""));
-                    else sb.AppendLine("Write-Host \"" + line.Replace("\"", "`\"") + "\"");
+                    sb.AppendLine("@echo off");
+                    sb.AppendLine("rem generated by GitTreeManager");
+                    sb.AppendLine("rem 注意：env 变量 GIT_COMMITTER_* 只影响本脚本内的 git 子进程");
+                    foreach (var c in _lastCmdsForExport)
+                    {
+                        if (c.Env != null)
+                            foreach (var kv in c.Env)
+                                sb.AppendLine("set \"" + kv.Key + "=" + UnquotePlaceholder(kv.Value) + "\"");
+                        sb.AppendLine("git " + JoinArgsForBat(c.Args));
+                        if (c.Env != null)
+                            foreach (var kv in c.Env)
+                                sb.AppendLine("set \"" + kv.Key + "=" + "\"");
+                    }
+                }
+                else
+                {
+                    sb.AppendLine("# generated by GitTreeManager");
+                    if (anyEnv) sb.AppendLine("$envBackup = @{}");
+                    foreach (var c in _lastCmdsForExport)
+                    {
+                        if (c.Env != null)
+                            foreach (var kv in c.Env)
+                                sb.AppendLine("$env:" + kv.Key + " = '" + PsQuote(UnquotePlaceholder(kv.Value)) + "'");
+                        sb.Append("git");
+                        foreach (var a in c.Args) sb.Append(' ').Append(PsArg(a));
+                        sb.AppendLine();
+                        if (c.Env != null)
+                            foreach (var kv in c.Env)
+                                sb.AppendLine("Remove-Item Env:" + kv.Key + " -ErrorAction SilentlyContinue");
+                    }
                 }
                 File.WriteAllText(dlg.FileName, sb.ToString(), new UTF8Encoding(false));
                 stsLast.Text = "已导出: " + dlg.FileName;
             }
         }
+
+        /// <summary>把 {key} 占位符转成"未知值"注释，让脚本至少可读；实际值由 GitRunner 执行前替换。</summary>
+        private static string UnquotePlaceholder(string v)
+        {
+            if (string.IsNullOrEmpty(v)) return "";
+            return v.Replace("{", "$(").Replace("}", ")"); // 保留视觉提示，用户看得见"这是占位符"
+        }
+
+        private static string JoinArgsForBat(string[] args)
+        {
+            var sb = new StringBuilder();
+            for (int i = 0; i < args.Length; i++)
+            {
+                if (i > 0) sb.Append(' ');
+                string a = args[i] ?? "";
+                bool needsQuote = a.Length == 0
+                    || a.IndexOfAny(new[] { ' ', '\t', '"', '|', '&', '^', '<', '>' }) >= 0;
+                if (needsQuote) sb.Append('"').Append(a.Replace("\"", "")).Append('"');
+                else sb.Append(a);
+            }
+            return sb.ToString();
+        }
+
+        private static string PsArg(string a)
+        {
+            if (string.IsNullOrEmpty(a)) return "''";
+            if (a.IndexOfAny(new[] { ' ', '\t', '\'', '"', '$', '`' }) < 0) return a;
+            return "'" + a.Replace("'", "''") + "'";
+        }
+
+        private static string PsQuote(string a) { return (a ?? "").Replace("'", "''"); }
 
         private void txtTermInput_KeyDown(object sender, KeyEventArgs e)
         {
@@ -808,6 +976,8 @@ namespace GitTreeManager
                 p.BeginOutputReadLine();
                 p.BeginErrorReadLine();
                 if (!p.WaitForExit(15_000)) { try { p.Kill(); } catch { } stdout = sbO.ToString(); stderr = sbE.ToString(); return -1; }
+                // 无参 WaitForExit 阻塞至异步读流 EOF，防 StringBuilder 拿到半截 (P0-1 同源问题)
+                p.WaitForExit();
                 stdout = sbO.ToString();
                 stderr = sbE.ToString();
                 return p.ExitCode;
@@ -999,15 +1169,30 @@ namespace GitTreeManager
 
         // ---------- ITerminalSink ----------
 
+        // Font 缓存：RichTextBox.SelectionFont 每次 new Font 会累积 GDI 句柄，只 new 一次。
+        // rchTerm.Font / dgvWorktrees.Font 在 InitializeComponent 后不变，安全静态化。
+        private Font _rtBoldFont;
+        private Font _rtRegularFont;
+        private Font _gridStrikeoutFont;
+        private Font GridRegularFont { get { return _rtRegularFont ?? (_rtRegularFont = rchTerm.Font); } }
+        private Font RtBoldFont { get { return _rtBoldFont ?? (_rtBoldFont = new Font(rchTerm.Font, FontStyle.Bold)); } }
+        private Font GridStrikeoutFont
+        {
+            get { return _gridStrikeoutFont ?? (_gridStrikeoutFont = new Font(dgvWorktrees.Font, FontStyle.Strikeout)); }
+        }
+
         public void Write(string line, TermKind kind) { AppendTerm(line, kind); }
 
         public void WriteCommand(GitCommand cmd, int? index, int? total)
         {
+            if (rchTerm.IsDisposed) return;
             if (rchTerm.InvokeRequired)
             {
-                rchTerm.BeginInvoke(new Action<GitCommand, int?, int?>(WriteCommand), cmd, index, total);
+                try { rchTerm.BeginInvoke(new Action<GitCommand, int?, int?>(WriteCommand), cmd, index, total); }
+                catch { /* race on dispose */ }
                 return;
             }
+            if (rchTerm.IsDisposed) return;
             string prefix = (index.HasValue && total.HasValue) ? "[" + index.Value + "/" + total.Value + "] " : null;
             AppendTokens(cmd.Colorize(prefix));
         }
@@ -1023,6 +1208,7 @@ namespace GitTreeManager
 
         private void AppendTokens(IEnumerable<TermToken> tokens)
         {
+            if (rchTerm.IsDisposed) return;
             int start = rchTerm.TextLength;
             var sb = new StringBuilder();
             var spans = new List<Tuple<int, int, Color, bool>>();
@@ -1040,7 +1226,7 @@ namespace GitTreeManager
             {
                 rchTerm.Select(sp.Item1, sp.Item2);
                 rchTerm.SelectionColor = sp.Item3;
-                rchTerm.SelectionFont = sp.Item4 ? new Font(rchTerm.Font, FontStyle.Bold) : rchTerm.Font;
+                rchTerm.SelectionFont = sp.Item4 ? RtBoldFont : GridRegularFont;
             }
             rchTerm.Select(rchTerm.TextLength, 0);
             rchTerm.ScrollToCaret();
@@ -1064,18 +1250,20 @@ namespace GitTreeManager
 
         private void AppendTerm(string line, TermKind kind)
         {
+            if (rchTerm.IsDisposed) return;
             if (rchTerm.InvokeRequired)
             {
-                rchTerm.BeginInvoke(new Action<string, TermKind>(AppendTerm), line, kind);
+                try { rchTerm.BeginInvoke(new Action<string, TermKind>(AppendTerm), line, kind); }
+                catch { /* race on dispose */ }
                 return;
             }
+            if (rchTerm.IsDisposed) return;
             string text = (line ?? "") + Environment.NewLine;
             int start = rchTerm.TextLength;
             rchTerm.AppendText(text);
             rchTerm.Select(start, (line ?? "").Length);
             rchTerm.SelectionColor = ColorFor(kind);
-            if (kind == TermKind.Fail) rchTerm.SelectionFont = new Font(rchTerm.Font, FontStyle.Bold);
-            else rchTerm.SelectionFont = rchTerm.Font;
+            rchTerm.SelectionFont = kind == TermKind.Fail ? RtBoldFont : GridRegularFont;
             rchTerm.Select(rchTerm.TextLength, 0);
             rchTerm.ScrollToCaret();
             stsLast.Text = string.IsNullOrEmpty(line) ? "" : (line.Length > 80 ? line.Substring(0, 80) + "..." : line);

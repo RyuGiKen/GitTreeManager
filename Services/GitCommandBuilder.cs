@@ -158,7 +158,10 @@ namespace GitTreeManager.Services
         // ---------- Worktree 流水线（Tab 内 "执行" 按钮用） ----------
         // 只处理表格里的每一行，不再做 init/clone（那是 grpRepo 右侧 "创建/克隆" 的职责）。
         // IsMain=true 的行：不 worktree add；config 用 --local 前缀。
-        // IsMain=false 的行：worktree add（branchExists 探针决定要不要 -b）；config 用 --worktree。
+        // IsMain=false 的行：
+        //   Path 已是 linked worktree (.git 是文件) → 跳过 add，只刷 --worktree 身份
+        //   Path 待创建 + 分支非空 → worktree add (探针决定要不要 -b) + --worktree 身份
+        //   Path 待创建 + 分支为空 → 无法建，跳过整行 (避免生成 `-b ""` 让 add 报错)
         public IList<GitCommand> BuildWorktreeApply(AppSettings s, System.Func<string, bool> branchExists = null)
         {
             var list = new List<GitCommand>();
@@ -178,21 +181,39 @@ namespace GitTreeManager.Services
                         list.Add(new GitCommand("-C", path, "config", "--local", "user.email", en.UserEmail));
                     continue;
                 }
-                bool exists = false;
-                if (branchExists != null && !string.IsNullOrWhiteSpace(en.Branch))
+                bool pathAlreadyWt = IsExistingWorktree(path);
+                if (!pathAlreadyWt)
                 {
-                    try { exists = branchExists(en.Branch); } catch { exists = false; }
+                    if (string.IsNullOrWhiteSpace(en.Branch)) continue; // 空分支且未创建，跳过整行
+                    bool exists = false;
+                    if (branchExists != null)
+                    {
+                        try { exists = branchExists(en.Branch); } catch { exists = false; }
+                    }
+                    if (exists)
+                        list.Add(new GitCommand("-C", s.RepoPath, "worktree", "add", path, en.Branch));
+                    else
+                        list.Add(new GitCommand("-C", s.RepoPath, "worktree", "add", path, "-b", en.Branch));
                 }
-                if (exists)
-                    list.Add(new GitCommand("-C", s.RepoPath, "worktree", "add", path, en.Branch));
-                else
-                    list.Add(new GitCommand("-C", s.RepoPath, "worktree", "add", path, "-b", en.Branch ?? ""));
                 if (!string.IsNullOrWhiteSpace(en.UserName))
                     list.Add(new GitCommand("-C", path, "config", "--worktree", "user.name", en.UserName));
                 if (!string.IsNullOrWhiteSpace(en.UserEmail))
                     list.Add(new GitCommand("-C", path, "config", "--worktree", "user.email", en.UserEmail));
             }
             return list;
+        }
+
+        /// <summary>Path 是否已经是 linked worktree（.git 是文件指针）。</summary>
+        private static bool IsExistingWorktree(string path)
+        {
+            if (string.IsNullOrEmpty(path)) return false;
+            try
+            {
+                if (!System.IO.Directory.Exists(path)) return false;
+                string gitPath = System.IO.Path.Combine(path, ".git");
+                return System.IO.File.Exists(gitPath);
+            }
+            catch { return false; }
         }
 
         // ---------- 功能 1：清理多余提交和引用记录 ----------

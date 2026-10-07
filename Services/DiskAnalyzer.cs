@@ -78,28 +78,19 @@ namespace GitTreeManager.Services
         {
             try
             {
-                if (File.Exists(gitPointerPath))
-                {
-                    string txt = File.ReadAllText(gitPointerPath).Trim();
-                    if (txt.StartsWith("gitdir:"))
-                    {
-                        string p = txt.Substring("gitdir:".Length).Trim();
-                        if (!Path.IsPathRooted(p)) p = Path.GetFullPath(Path.Combine(repoPath, p));
-                        if (Directory.Exists(p))
-                        {
-                            // p 通常是 .git/worktrees/<name>；主仓库 .git 是它的祖父目录
-                            var parent = Directory.GetParent(p);
-                            if (parent != null)
-                            {
-                                var grand = parent.Parent;
-                                if (grand != null && Directory.Exists(grand.FullName) &&
-                                    string.Equals(grand.Parent != null ? grand.Parent.Name : "", "worktrees", StringComparison.OrdinalIgnoreCase))
-                                    return parent.FullName;
-                            }
-                            return p;
-                        }
-                    }
-                }
+                if (!File.Exists(gitPointerPath)) return null;
+                string txt = File.ReadAllText(gitPointerPath).Trim();
+                if (!txt.StartsWith("gitdir:", StringComparison.OrdinalIgnoreCase)) return null;
+                string p = txt.Substring("gitdir:".Length).Trim();
+                if (string.IsNullOrEmpty(p)) return null;
+                if (!Path.IsPathRooted(p)) p = Path.GetFullPath(Path.Combine(repoPath, p));
+                if (!Directory.Exists(p)) return null;
+                // p = <main>\.git\worktrees\<name> → 主 .git 是 parent.parent
+                var worktrees = Directory.GetParent(p);            // <main>\.git\worktrees
+                if (worktrees == null) return null;
+                var gitDir = worktrees.Parent;                     // <main>\.git
+                if (gitDir == null || !Directory.Exists(gitDir.FullName)) return null;
+                return Path.GetFullPath(gitDir.FullName);
             }
             catch { }
             return null;
