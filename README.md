@@ -1,83 +1,57 @@
 # Git Tree Manager
 
-一个 Windows 桌面的 Git 仓库 + worktree 批量配置工具（.NET Framework 4.7.2 WinForms）。目标：把 `git init/clone`、`extensions.worktreeConfig`、`git worktree add`、`git config --worktree user.name/email` 这一套命令行压缩成一次填表 + 一键执行，同时补几个 TortoiseGit 右键一级菜单里没有的常用动作。
+Windows 桌面的 Git 仓库 + worktree 批量配置工具（.NET Framework 4.7.2 WinForms）。把 `git init/clone` + `worktree add` + `config --worktree user.name/email` 这套命令压缩成"填表 → 一键执行"，并补几个 TortoiseGit 右键没有的常用动作。
 
-## 目录结构
+## 快速开始
 
-```
-Tree/
-├─ GitTreeManager.csproj      老式 csproj，TargetFrameworkVersion=v4.7.2
-├─ App.config
-├─ Program.cs                 入口
-├─ MainForm.cs                UI 逻辑 + 事件
-├─ MainForm.Designer.cs       控件布局（Designer 手写，4 处同步）
-├─ Models/
-│  ├─ WorktreeEntry.cs        一行 worktree 配置
-│  └─ AppSettings.cs          全局配置 + RepoMode 枚举
-├─ Services/
-│  ├─ CommandLineEscaper.cs   Windows argv → command line 转义
-│  ├─ GitCommandBuilder.cs    纯拼命令，可单测
-│  ├─ GitRunner.cs            逐条执行，支持 dry-run / 超时
-│  └─ ConfigStore.cs          settings.xml 读写
-└─ Properties/AssemblyInfo.cs
-```
+1. 顶部填**仓库路径**（输入框会实时变底色：绿=已是仓库、橙=待创建、红=普通文件夹）
+2. 选**新建**或**克隆已有**，点右侧 `创建` / `克隆` 按钮 → 仓库根 + `extensions.worktreeConfig` 就绪
+3. 切到 **Worktree** 页，逐行填 `worktree 路径 / 分支 / user.name / user.email`（或点"读取现有 worktree"回填）
+4. 想先看看会跑什么 → 保持 Dry-run 勾选，点 `执行`，命令会打印到终端页
+5. 确认无误 → 取消 Dry-run，再点 `执行`，二次确认后逐条实跑（**一行失败即中断全部**）
 
-## 主窗体
+## 界面
 
-顶部 grpRepo：**左区**三行 = 仓库路径 + 模式单选 + 默认分支 + git.exe 路径；**右区**一列 3 个统一 116×25 按钮，与三行左内容顶对齐：Y=25 浏览仓库路径 / Y=57 创建·克隆（文字随 rbNew/rbClone 切换）/ Y=89 浏览 git.exe。git.exe 启动时按 `GIT_HOME → Program Files\Git\cmd → Program Files\Git\bin → Program Files (x86)\Git → %LOCALAPPDATA%\Programs\Git` 顺序自动探测，找不到回退 `git`。
+- **顶部 仓库位置**：路径 / 模式 / 默认分支 / git.exe 路径。右侧一列 3 个按钮：浏览仓库、`创建/克隆`（文字随模式切换）、浏览 git.exe。git.exe 启动时自动探测常见安装位（`GIT_HOME` → `Program Files\Git\cmd` → `%LOCALAPPDATA%\Programs\Git` → ...）。
+- **Tab 1 · Worktree**：DataGridView，最多 99 行，列 = `# / 类型 / worktree 路径 / 分支 / user.name / user.email`。工具条：添加行 / 删除行 / 上移 / 下移 / 读取现有 worktree / 清空；右下角 `执行` 只跑本表流水线。
+- **Tab 2 · 终端**：深色面板，实时显示每条跑过/将要跑的 git 命令（token 上色），支持直接敲命令回车执行、`↑↓` 翻历史、`Ctrl+C` 或点"中断"终止当前子进程。工具条：清空 / 中断 / 导出 .bat / 导出 .ps1。
+- **全局条**（跨 tab 常驻）：`Dry-run` 复选框 + `预览全部命令`（一次 dump Worktree 流水线 + 5 个常用功能的命令）。
+- **底部 5 个常用功能**（详见下一节）。
 
-中间 TabControl 两页：
-1. **Worktree**：DataGridView 最多 99 行，列 = `# / 类型 / worktree 路径 / 分支 / user.name / user.email`；"类型"列只读，值由 `<路径>\.git` 是**目录还是文件**自动推导 —— `.git` 目录 = 主仓库（淡蓝背景），`.git` 文件（内含 `gitdir: ...` 指针）= 已存在的 worktree，`.git` 缺失（路径不存在或还没建）= 视作待创建 worktree。用户不需要也无法手动指定。工具条按钮统一宽度；底部右锚只有"执行"。
-2. **终端**：只读 RichTextBox + 底部 `$` prompt + 输入行；彩色分级（命令蓝 / stdout 黑 / stderr 红 / meta 灰 / 完成绿 / 失败红加粗）；支持 `git ...` 或裸子命令自动加 git 前缀；↑↓ 翻历史；Ctrl+C 或"中断"按钮 Kill 当前 git 子进程；工具条：清空 / 中断 / 导出 .bat / 导出 .ps1。
+## 行的类型是自动判的（不给用户勾）
 
-底部 grpCommon：一行 5 个 200×30 按钮，间距 18，全行刚好铺满 grpCommon 内部宽度。
-
-## 命令流水线
-
-**两级分离**（避免"执行"按钮既建仓库又建 worktree 的语义混淆）：
-
-1. **仓库级** —— grpRepo 右侧"创建/克隆"按钮 → `BuildInitOrCloneOnly`：
-   - 新建：`git init -b <default> <RepoPath>`
-   - 克隆：`git clone -b <default> <url> <RepoPath>`
-   - 收尾：`git -C <RepoPath> config extensions.worktreeConfig true`
-
-2. **Worktree 级** —— Worktree tab 底部"执行"按钮 → `BuildWorktreeApply`：
-   - 幂等前置：`git -C <RepoPath> config extensions.worktreeConfig true`
-   - 每行的类型自动从 `<path>\.git` 判定：
-     - **主仓库**（`.git` 是目录）：不 `worktree add`；`git -C <path> config --local user.name <x>`（`--local` 前缀，不带 `--worktree`）
-     - **worktree**（`.git` 是文件 或 缺失）：`git -C <RepoPath> worktree add <path> [-b] <branch>` → `git -C <path> config --worktree user.name <x>` → 同 email
-   - 若主仓库不存在（`<RepoPath>\.git` 目录缺失），"执行"直接弹提示让用户先点"创建/克隆"
-   - 分支存在性探针：`git branch --list <b> --format=%(refname:short)` 非空 → 不加 `-b`（实测否则 fatal 分支已存在）
-
-**读取现有 worktree** —— Worktree tab 工具条按钮：
-- `git worktree list --porcelain` 解析路径+分支，行类型自动从 `.git` 判定
-- 主仓库行读 `--local user.name/email`；worktree 行读 `--worktree user.name/email`（未覆盖时可能为空，符合预期）
-
-## 常用功能按钮
-
-底部一行 5 个按钮，按用户明确给的名称与语义。全部走"预览命令 → 日志页"路径；勾选取消 Dry-run 时二次确认后实跑。
-
-| # | 按钮 | 语义 | 命令流水线 |
+| 情况 | 类型列 | 指令 | 底色 |
 |---|---|---|---|
-| 1 | 清理多余提交和引用记录 | 不在分支树上的孤儿 commit + dangling 对象；连 reflog 里对它们的引用记录一并释放 | `git fsck --full --unreachable --dangling --no-reflogs` → `git reflog expire --expire=now --all` → `git prune --expire=now -v` → `git gc --prune=now` |
-| 2 | 清理已合并分支 | 已合并到默认分支、且不是任何 worktree 当前 checkout、也不是默认分支/HEAD 的本地分支 | 扫描：`git worktree list --porcelain` + `git branch --merged <default> --format=%(refname:short)` + `git rev-parse --abbrev-ref HEAD`；上层算差集 → 弹勾选 → `git branch -d <x>` |
-| 3 | 更新远端 | 所有 remote、所有分支、tags、prune 失效追踪、submodule 按需递归 | `git fetch --all --prune --tags --recurse-submodules=on-demand` → `git remote update --prune` |
-| 4 | 仓库磁盘分析 | `.git` 内部对象、pack 明细、LFS、worktrees 各自占用 | git 侧：`git count-objects -v -H`；文件系统侧：C# 遍历 pack Top N / 松散对象 / LFS / worktrees 元数据 / reflog / hooks / .git 总占用 / 工作副本（不含 .git） |
-| 5 | 对齐最新提交 | 让 HEAD 的 committer date/name/email 分别等于 author 的对应字段 | `git show -s --format=%an HEAD` → `%ae` → `%aI` → `GIT_COMMITTER_NAME=... GIT_COMMITTER_EMAIL=... GIT_COMMITTER_DATE=... git commit --amend --no-edit` |
+| `<path>\.git` 是**目录** | 主仓库 | `config --local user.name` | 淡蓝 |
+| `<path>\.git` 是**文件**（`gitdir: ...`） | worktree | `config --worktree user.name` | 白色 |
+| 路径不存在 | worktree（待创建） | `worktree add [-b] <branch>` + `config --worktree` | 白色 |
+| 路径存在但**属于另一个仓库**（跨仓库） | worktree | 不参与本次执行 | 淡橙 + 路径打删除线 |
 
-**关键实现细节**
-- "清理多余提交和引用记录"：缺 `reflog expire` 的话，对象仍被 reflog 视作可达，`prune` 不会动。这条链是 fsck → reflog expire → prune → gc，顺序不能颠倒。
-- "清理已合并分支"：git 会拒绝 `branch -d` 删除被任何 worktree checkout 的分支（`fatal: cannot delete branch 'xxx' used by worktree at ...`），所以必须先 `worktree list --porcelain` 拿锁定集，再从 `branch --merged` 结果里减掉。
-- "更新远端"只做 `--prune`（清理本地 `refs/remotes/*`），绝不 `git push --delete`——真实远端分支不能碰。
-- "对齐最新提交"用 `ProcessStartInfo.EnvironmentVariables` 注入 `GIT_COMMITTER_*`，值由前 3 条 `git show` 的 stdout 回填；`GitRunner` 支持 `{key}` 占位符跨命令传值（`GitCommand.CaptureStdoutAs` + `.WithEnv(k, v)`）。**不加** `--reset-author`——那个会把 author 也重置成当前 config，我们要反过来（committer ← author）。
+RepoPath 允许直接指向 linked worktree（.git 是文件的场景），git 会解析 common dir 走通全套操作。
 
-## Dry-run 模式
+## 常用功能 5 个按钮
 
-默认开启。预览命令 / 各功能按钮只把 `git ...` 拼好写入日志页，不启动进程。取消勾选后点执行会二次确认，然后逐条 `Process.Start git.exe`，捕获 stdout/stderr 回流日志，单条 60s 超时；任一失败即中断（可通过 `StopOnFirstFailure` 关掉）。
+| 按钮 | 干什么 | 关键命令 |
+|---|---|---|
+| 清理多余提交和引用记录 | 回收不在分支树上的孤儿 commit / dangling 对象 | `fsck --unreachable --dangling` → `reflog expire --all` → `prune --expire=now` → `gc --prune=now` |
+| 清理已合并分支 | 已合并到默认分支、且不被任何 worktree checkout、也不是默认/HEAD 的本地分支 | 扫描 `worktree list --porcelain` + `branch --merged` → 终端列出候选（勾选 UI 待做，先给出手动 `branch -d` 命令） |
+| 更新远端 | 所有 remote、所有分支、tags、清理失效追踪、submodule 按需递归 | `fetch --all --prune --tags --recurse-submodules=on-demand` + `remote update --prune` |
+| 仓库磁盘分析 | `.git` 内部对象、pack Top N、LFS、worktrees 元数据、reflog、hooks、工作副本体积 | `count-objects -v -H` + C# 文件系统扫描 |
+| 对齐最新提交 | 让 HEAD 的 committer date/name/email 全部等于 author 的对应字段 | `show -s --format=%an/%ae/%aI HEAD` → env `GIT_COMMITTER_*` + `commit --amend --no-edit` |
 
-## 持久化
+**注意**："更新远端"只清本地 `refs/remotes/*` 失效追踪，不会 `git push --delete`。
 
-exe 同目录 `settings.xml`。结构：`<settings><Repo/><Options/><Worktrees><Entry .../></Worktrees></settings>`。关窗时自动保存，启动时自动加载。
+## 读命令也会显式回显
+
+`读取现有 worktree`、`清理已合并分支`、分支存在性探针——所有实际跑的 `git -C ... worktree list / branch --list / config --local / config --worktree` 都会先打印到终端，再展示返回值。所见即所跑。
+
+## Dry-run
+
+默认开启。所有按钮（执行 / 创建/克隆 / 5 个常用功能）在 Dry-run 下只把命令打印到终端，不启动进程。取消勾选后点执行会弹二次确认，然后逐条 `Process.Start git.exe`，单条超时 5 分钟，任一失败立即中断后续。
+
+## 设置持久化
+
+exe 同目录 `settings.xml`，关窗自动保存、启动自动加载。若加载时 xml 损坏，会禁用关闭时的覆盖写，防止把好配置用默认值冲掉。
 
 ## 编译
 
@@ -88,14 +62,10 @@ VS 2026 (v18) MSBuild：
   GitTreeManager.csproj -t:Rebuild -p:Configuration=Debug "-p:OutputPath=bin/Verify"
 ```
 
-`OutputPath` 用正斜杠且整段带引号，避免 Git Bash 反斜杠转义踩坑。
+## 已知限制
 
-## 已知限制 / 下一轮 TODO
-
-- 表格手动加行不做智能去重、不做路径存在性校验；下一轮加。
-- `读取现有 worktree` 按钮当前只打占位日志，未真跑 `git worktree list --porcelain` 回填。
-- 常用功能 5 个按钮的**扫描/流水线命令已实装**，Dry-run 关时 `GitRunner` 会按顺序跑并回填 `{key}` 占位符。但：
-  - "清理已合并分支"目前只输出扫描命令与捕获，差集计算 + 弹勾选框 + 后续 `git branch -d` 下一轮接入。
-  - "仓库磁盘分析" git 侧命令已发，文件系统侧扫描（Top N pack、LFS 目录体积、worktrees 各自占用）下一轮在 C# 里补。
-- 无 i18n，中文硬编码。
-- 无日志文件持久化，只保留在 UI 内。
+- "清理已合并分支"目前只列候选 + 给出手动删除命令，勾选对话框待做
+- 分支存在性探针在预览与执行各跑一次，中间若分支被外部改动会有 TOCTOU 差异（场景少见）
+- 子模块 / bare 仓库的 `.git` 结构会被当 linked worktree 处理，指向它们时行为不保证
+- `git init -b <branch>` 要求 git ≥ 2.28，低版本需先在"新建"前手动切换分支名
+- 无 i18n（中文硬编码）、无日志文件持久化（关闭即失）
